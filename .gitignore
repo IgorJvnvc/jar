@@ -1,0 +1,53 @@
+# Node
+node_modules/
+client/node_modules/
+client/dist/
+
+# .NET
+server/**/bin/
+server/**/obj/
+
+# Android / iOS build output
+client/android/.gradle/
+client/android/.gradle-cache*/
+client/android/**/build/
+client/android/local.properties
+client/android/captures/
+client/android/.idea/
+client/android/capacitor-cordova-android-plugins/
+client/android/app/src/main/assets/public/
+client/android/app/src/main/assets/capacitor.config.json
+client/android/app/src/main/assets/capacitor.plugins.json
+client/android/app/src/main/res/xml/config.xml
+client/ios/App/App/public/
+client/ios/App/App/capacitor.config.json
+client/ios/App/App/capacitor.plugins.json
+
+# Signing files
+*.jks
+*.keystore
+client/android/keystore.properties
+client/android/keystore.properties.*
+!client/android/keystore.properties.example
+
+# Firebase secrets
+server/**/firebase-admin*.json
+**/google-services.json
+**/GoogleService-Info.plist
+
+# IDE
+.idea/
+.vscode/
+*.suo
+
+# Environment files
+*.env
+*.env.*
+!client/.env.example
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

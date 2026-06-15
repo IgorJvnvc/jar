@@ -1,0 +1,17 @@
+namespace PoolTracker.Api.Features.Profile.Contracts;
+
+public sealed record ProfileResponse(
+    Guid UserId,
+    string DisplayName,
+    string Email,
+    string AvatarColorHex,
+    int? FavoriteBallNumber,
+    int Points,
+    int DebtPoints,
+    string? Title,
+    decimal Power,
+    decimal Accuracy,
+    decimal CueControl,
+    decimal Spin,
+    DateTimeOffset UpdatedAtUtc
+);

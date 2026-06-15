@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Jar</string>
+    <string name="title_activity_main">Jar</string>
+    <string name="package_name">com.masan.jar</string>
+    <string name="custom_url_scheme">com.masan.jar</string>
+</resources>
