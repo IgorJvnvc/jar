@@ -1,19 +1,30 @@
 # Jar
 
-Native-first mobile app for tracking 8-ball pool sessions, duels, halls, and player stats.
+Native-only mobile app (no PWA/web build) for tracking 8-ball pool sessions, duels, halls, and player stats. Android-first, with iOS to follow.
 
 ## Stack
 
 - Backend: ASP.NET Core 8 Web API, EF Core, Identity, JWT
 - Database: PostgreSQL
 - Frontend: React + Vite + TypeScript + Framer Motion
-- Mobile: Capacitor Android/iOS wrapper
+- Mobile: Capacitor Android/iOS wrapper (native-only; PWA/web Firebase SDK removed — push uses Capacitor + FCM)
 
 ## Monorepo
 
 - `server/PoolTracker.Api` - .NET API and domain model
 - `server/PoolTracker.Api.Tests` - integration test suite
 - `client` - React + Capacitor mobile client
+
+## Features
+
+- JWT auth with player profiles (avatar, points balance, debt, titles, equipped cue).
+- Sessions: start/stop play and log per-game reports (balls potted, games, snookers).
+- Pool halls and tables with player ratings.
+- Duels: challenge a player, settle by mutual agreement or coin-flip, wager points/debt.
+- Leaderboards: Sessions and Duels (win-rate ranked).
+- Player records: duel and general win/loss with win-rate.
+- Cue shop with equippable cues.
+- Real-time updates over SignalR; native push for duel challenges.
 
 ## Local development
 
@@ -84,3 +95,10 @@ cd client/android
 Signed APK output path:
 
 - `client/android/app/build/outputs/apk/release/app-release.apk`
+
+## Roadmap
+
+- **Phase 1 (done)** — Duel game-feel and player identity.
+- **Phase 2 (done)** — Player records and duel leaderboard.
+- **Phase 3 (planned)** — Pool-day engine: background auto-stop/settlement, daily hall competition, retire manual stat editing.
+- **Phase 4+ (planned)** — Levels/XP, achievements, cue stat bonuses, match simulation.

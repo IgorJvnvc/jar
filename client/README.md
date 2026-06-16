@@ -1,73 +1,34 @@
-# React + TypeScript + Vite
+# Jar Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite + TypeScript front end for Jar, packaged as a native Android/iOS app
+via Capacitor. Native-only — there is no PWA or web/service-worker build.
 
-Currently, two official plugins are available:
+## Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Vite dev server (browser, port 5173) for fast UI iteration |
+| `npm run build` | Type-check (`tsc -b`) + production Vite build to `dist/` |
+| `npm run build:mobile` | `build` then `npx cap sync` into the native projects |
+| `npm run cap:sync` | Sync web assets + plugins into Android/iOS (no rebuild) |
+| `npm run cap:android` | Open the Android project in Android Studio |
+| `npm run cap:ios` | Open the iOS project in Xcode |
+| `npm run lint` | ESLint (flat config) |
+| `npm run test` / `test:watch` | Vitest (jsdom) for `src/lib` unit tests |
+| `npm run preview` | Preview the production build locally |
 
-## React Compiler
+## Stack notes
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19 + React Router 7, Framer Motion for animation, SignalR for real-time.
+- Native push via `@capacitor/push-notifications` (FCM on Android) — no web push.
+- ESLint uses `eslint-plugin-react-hooks` v7 (React-Compiler-aligned): avoid
+  synchronous `setState` inside effects — derive state instead.
+- Unit tests cover `src/lib` helpers only; there are no component/render tests.
 
-## Expanding the ESLint configuration
+## Mobile workflow
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. `npm run build:mobile` to build and sync into the native projects.
+2. `npm run cap:android` / `npm run cap:ios` to open and run on device/emulator.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Backend setup, deployment, native push config, and Android signing live in the
+[root README](../README.md).
