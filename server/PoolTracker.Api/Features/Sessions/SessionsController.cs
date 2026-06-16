@@ -16,16 +16,16 @@ namespace PoolTracker.Api.Features.Sessions;
 public sealed class SessionsController : ControllerBase
 {
     private readonly PoolTrackerDbContext dbContext;
-    private readonly IPointsLedgerService pointsLedger;
+    private readonly ISessionSettlementService sessionSettlement;
     private readonly INotificationService notificationService;
 
     public SessionsController(
         PoolTrackerDbContext dbContext,
-        IPointsLedgerService pointsLedger,
+        ISessionSettlementService sessionSettlement,
         INotificationService notificationService)
     {
         this.dbContext = dbContext;
-        this.pointsLedger = pointsLedger;
+        this.sessionSettlement = sessionSettlement;
         this.notificationService = notificationService;
     }
 
@@ -144,34 +144,17 @@ public sealed class SessionsController : ControllerBase
         }
 
         var now = DateTimeOffset.UtcNow;
-        session.EndedAtUtc = now;
-        session.IsActive = false;
-
-        var durationMinutes = (session.EndedAtUtc.Value - session.StartedAtUtc).TotalMinutes;
-        var flagged = IsPotentialOutlier(durationMinutes, request.BallsPotted);
-
-        session.Report = new SessionReport
-        {
-            SessionId = session.Id,
-            BallsPotted = request.BallsPotted,
-            GamesWon = request.GamesWon,
-            GamesLost = request.GamesLost,
-            SnookersEscaped = request.SnookersEscaped,
-            Notes = NormalizeNotes(request.Notes),
-            FlaggedForValidation = flagged,
-            SubmittedAtUtc = now
-        };
-
-        var awardedPoints = CalculateSessionPoints(durationMinutes);
-        await pointsLedger.AwardPointsAsync(
-            userId.Value,
-            awardedPoints,
-            PointsTransactionType.SessionCompletion,
-            "Completed a pool session",
-            session.Id,
+        var awardedPoints = await sessionSettlement.SettleAsync(
+            session,
+            new SessionSettlementInput(
+                request.BallsPotted,
+                request.GamesWon,
+                request.GamesLost,
+                request.SnookersEscaped,
+                request.Notes,
+                SessionEndReason.Manual,
+                now),
             cancellationToken);
-
-        await UpsertDailyMetricAsync(userId.Value, request, now, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -215,53 +198,6 @@ public sealed class SessionsController : ControllerBase
         return Ok(responses);
     }
 
-    private async Task UpsertDailyMetricAsync(Guid userId, EndSessionRequest report, DateTimeOffset endedAtUtc, CancellationToken cancellationToken)
-    {
-        var date = DateOnly.FromDateTime(endedAtUtc.UtcDateTime);
-        var metric = await dbContext.PlayerDailyMetrics
-            .SingleOrDefaultAsync(current => current.UserId == userId && current.Date == date, cancellationToken);
-
-        if (metric is null)
-        {
-            metric = new PlayerDailyMetric
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Date = date
-            };
-            dbContext.PlayerDailyMetrics.Add(metric);
-        }
-
-        metric.TotalBallsPotted += report.BallsPotted;
-        metric.TotalGamesWon += report.GamesWon;
-        metric.TotalGamesLost += report.GamesLost;
-        metric.SessionsCompleted += 1;
-    }
-
-    private static bool IsPotentialOutlier(double durationMinutes, int ballsPotted)
-    {
-        if (durationMinutes <= 0)
-        {
-            return ballsPotted > 0;
-        }
-
-        var perTenMinutes = ballsPotted / (durationMinutes / 10d);
-        return perTenMinutes > 15d;
-    }
-
-    private static int CalculateSessionPoints(double durationMinutes)
-    {
-        var basePoints = 12;
-        var durationBonus = (int)Math.Floor(durationMinutes / 20d) * 4;
-        return Math.Max(basePoints + durationBonus, 5);
-    }
-
-    private static string? NormalizeNotes(string? value)
-    {
-        var notes = value?.Trim();
-        return string.IsNullOrWhiteSpace(notes) ? null : notes;
-    }
-
     private static SessionResponse ToResponse(Session session, int awardedPoints)
     {
         var report = session.Report;
@@ -279,7 +215,8 @@ public sealed class SessionsController : ControllerBase
             report?.GamesLost ?? 0,
             report?.SnookersEscaped ?? 0,
             awardedPoints,
-            report?.Notes);
+            report?.Notes,
+            session.EndReason);
     }
 
     private Guid? GetCurrentUserId()

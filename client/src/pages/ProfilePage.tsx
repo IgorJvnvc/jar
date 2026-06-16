@@ -48,10 +48,6 @@ export function ProfilePage() {
           displayName: next.displayName,
           avatarColorHex: next.avatarColorHex,
           favoriteBallNumber: next.favoriteBallNumber,
-          power: next.power,
-          accuracy: next.accuracy,
-          cueControl: next.cueControl,
-          spin: next.spin,
         })
       } catch {
         if (active) {
@@ -87,10 +83,6 @@ export function ProfilePage() {
         displayName: updated.displayName,
         avatarColorHex: updated.avatarColorHex,
         favoriteBallNumber: updated.favoriteBallNumber,
-        power: updated.power,
-        accuracy: updated.accuracy,
-        cueControl: updated.cueControl,
-        spin: updated.spin,
       })
       setFeedback('Profile updated.')
     } catch {
@@ -105,7 +97,7 @@ export function ProfilePage() {
       <PageHeader
         eyebrow="Player Card"
         title="Profile"
-        subtitle="Placeholder avatar, core stats, and editable identity settings."
+        subtitle="Placeholder avatar, records, and editable identity settings."
       />
 
       {isLoading ? <p className="state-text">Loading profile...</p> : null}
@@ -203,7 +195,7 @@ export function ProfilePage() {
             </div>
           </Card>
 
-          <Card title="Stats & Identity" subtitle="Manual stat input for initial phase">
+          <Card title="Identity" subtitle="Your display name and how others see you">
             <div className="session-form-grid">
               <label className="field-label">
                 Display name
@@ -221,35 +213,6 @@ export function ProfilePage() {
                   }
                 />
               </label>
-
-              <StatInput
-                label="Power"
-                value={form.power}
-                onChange={(value) =>
-                  setForm((current) => (current ? { ...current, power: value } : current))
-                }
-              />
-              <StatInput
-                label="Accuracy"
-                value={form.accuracy}
-                onChange={(value) =>
-                  setForm((current) => (current ? { ...current, accuracy: value } : current))
-                }
-              />
-              <StatInput
-                label="Cue control"
-                value={form.cueControl}
-                onChange={(value) =>
-                  setForm((current) => (current ? { ...current, cueControl: value } : current))
-                }
-              />
-              <StatInput
-                label="Spin"
-                value={form.spin}
-                onChange={(value) =>
-                  setForm((current) => (current ? { ...current, spin: value } : current))
-                }
-              />
             </div>
 
             <button type="button" className="button button--primary" onClick={handleSave} disabled={isSubmitting}>
@@ -263,12 +226,6 @@ export function ProfilePage() {
   )
 }
 
-type StatInputProps = {
-  label: string
-  value: number
-  onChange: (value: number) => void
-}
-
 function winRateLabel(won: number, lost: number): string {
   const played = won + lost
 
@@ -277,20 +234,4 @@ function winRateLabel(won: number, lost: number): string {
   }
 
   return `${Math.round((won / played) * 100)}% win rate`
-}
-
-function StatInput({ label, value, onChange }: StatInputProps) {
-  return (
-    <label className="field-label">
-      {label}
-      <input
-        type="number"
-        min={0}
-        max={100}
-        step={0.5}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value || 0))}
-      />
-    </label>
-  )
 }

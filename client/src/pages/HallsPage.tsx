@@ -6,6 +6,7 @@ import { RatingStars } from '../components/ui/RatingStars'
 import { useAuthenticatedRequest } from '../hooks/use-authenticated-request'
 import type {
   AddPoolHallRequest,
+  HallDayCompetitionResponse,
   PoolHallDetailResponse,
   PoolHallResponse,
   PoolHallTableResponse,
@@ -43,6 +44,7 @@ export function HallsPage() {
   const [halls, setHalls] = useState<PoolHallResponse[]>([])
   const [selectedHallId, setSelectedHallId] = useState<string>('')
   const [hallDetail, setHallDetail] = useState<PoolHallDetailResponse | null>(null)
+  const [competition, setCompetition] = useState<HallDayCompetitionResponse | null>(null)
   const [hallForm, setHallForm] = useState<AddPoolHallRequest>(defaultHallForm)
   const [hallRating, setHallRating] = useState<RatePoolHallRequest>(defaultHallRating)
   const [tableRating, setTableRating] = useState<RatePoolHallTableRequest>(defaultTableRating)
@@ -104,13 +106,21 @@ export function HallsPage() {
 
     const loadDetail = async () => {
       try {
-        const detail = await authenticatedRequest((accessToken) => hallsApi.getById(accessToken, selectedHallId))
+        const { detail, dayCompetition } = await authenticatedRequest(async (accessToken) => {
+          const [detail, dayCompetition] = await Promise.all([
+            hallsApi.getById(accessToken, selectedHallId),
+            hallsApi.getCompetition(accessToken, selectedHallId),
+          ])
+
+          return { detail, dayCompetition }
+        })
 
         if (!active) {
           return
         }
 
         setHallDetail(detail)
+        setCompetition(dayCompetition)
         setSelectedTableId((current) => current || detail.tables[0]?.id || '')
       } catch {
         if (active) {
@@ -439,6 +449,51 @@ export function HallsPage() {
           </button>
         </Card>
       </div>
+
+      <Card
+        title="Today's Hall Competition"
+        subtitle={
+          competition
+            ? competition.isFinalized
+              ? `Finalized standings • ${competition.poolDate}`
+              : `Live standings • ${competition.poolDate}`
+            : 'Daily winner decided by games won'
+        }
+      >
+        {competition ? (
+          <>
+            <div className="hall-summary">
+              <small>
+                {competition.participantCount} players • {competition.totalSessions} sessions
+                {competition.winnerDisplayName ? ` • Winner: ${competition.winnerDisplayName}` : ''}
+              </small>
+            </div>
+
+            {competition.entries.length === 0 ? (
+              <p className="state-text">No completed sessions at this hall today.</p>
+            ) : (
+              <ul className="stack-list">
+                {competition.entries.map((entry) => (
+                  <li key={entry.userId} className="row-item">
+                    <strong className="slider-value">#{entry.rank}</strong>
+                    <div>
+                      <strong>{entry.displayName}</strong>
+                      <span>
+                        {entry.gamesWon}-{entry.gamesLost} • {entry.ballsPotted} pots
+                      </span>
+                    </div>
+                    <small>
+                      {entry.sessionsCompleted} sessions • {entry.minutesPlayed} min
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : (
+          <p className="state-text">Select a hall to view today's standings.</p>
+        )}
+      </Card>
     </div>
   )
 }

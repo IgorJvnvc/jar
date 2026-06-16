@@ -1,3 +1,5 @@
+using PoolTracker.Api.Domain.Entities;
+
 namespace PoolTracker.Api.Features.Sessions.Contracts;
 
 public sealed record SessionResponse(
@@ -13,5 +15,6 @@ public sealed record SessionResponse(
     int GamesLost,
     int SnookersEscaped,
     int AwardedPoints,
-    string? Notes
+    string? Notes,
+    SessionEndReason? EndReason
 );

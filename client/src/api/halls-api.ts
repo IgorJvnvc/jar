@@ -2,6 +2,7 @@ import { request } from '../lib/http'
 import type {
   AddPoolHallRequest,
   AddPoolHallTableRequest,
+  HallDayCompetitionResponse,
   PoolHallDetailResponse,
   PoolHallResponse,
   PoolHallTableResponse,
@@ -18,6 +19,19 @@ export const hallsApi = {
 
   getById(accessToken: string, hallId: string): Promise<PoolHallDetailResponse> {
     return request<PoolHallDetailResponse>(`/api/halls/${hallId}`, {
+      accessToken,
+    })
+  },
+
+  getCompetition(accessToken: string, hallId: string, date?: string): Promise<HallDayCompetitionResponse> {
+    const query = date ? `?date=${date}` : ''
+    return request<HallDayCompetitionResponse>(`/api/halls/${hallId}/competition${query}`, {
+      accessToken,
+    })
+  },
+
+  recentCompetitions(accessToken: string): Promise<HallDayCompetitionResponse[]> {
+    return request<HallDayCompetitionResponse[]>('/api/halls/competitions/recent', {
       accessToken,
     })
   },

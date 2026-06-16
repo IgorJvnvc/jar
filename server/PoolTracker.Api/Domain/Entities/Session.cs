@@ -16,6 +16,9 @@ public sealed class Session
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>How the session ended. Null while the session is still active.</summary>
+    public SessionEndReason? EndReason { get; set; }
+
     public SessionReport? Report { get; set; }
 
     public ApplicationUser User { get; set; } = null!;

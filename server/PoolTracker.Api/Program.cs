@@ -117,6 +117,13 @@ builder.Services.AddScoped<IPointsLedgerService, PointsLedgerService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IPushNotificationService, PushNotificationService>();
 
+builder.Services.Configure<PoolDayOptions>(builder.Configuration.GetSection(PoolDayOptions.SectionName));
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IPoolDayClock, PoolDayClock>();
+builder.Services.AddScoped<ISessionSettlementService, SessionSettlementService>();
+builder.Services.AddScoped<IPoolDayEngine, PoolDayEngine>();
+builder.Services.AddHostedService<PoolDayBackgroundService>();
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {

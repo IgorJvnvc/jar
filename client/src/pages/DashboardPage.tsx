@@ -12,6 +12,7 @@ import { useAuthenticatedRequest } from '../hooks/use-authenticated-request'
 import type {
   ActiveSessionPlayerResponse,
   CueItemResponse,
+  HallDayCompetitionResponse,
   PoolHallResponse,
   ProfileResponse,
   SessionResponse,
@@ -23,6 +24,7 @@ type DashboardData = {
   activePlayers: ActiveSessionPlayerResponse[]
   recentSessions: SessionResponse[]
   equippedCue: CueItemResponse | null
+  champions: HallDayCompetitionResponse[]
 }
 
 export function DashboardPage() {
@@ -41,12 +43,13 @@ export function DashboardPage() {
 
       try {
         const next = await authenticatedRequest(async (accessToken) => {
-          const [profile, halls, activePlayers, recentSessions, cues] = await Promise.all([
+          const [profile, halls, activePlayers, recentSessions, cues, champions] = await Promise.all([
             profileApi.getMine(accessToken),
             hallsApi.list(accessToken),
             playersApi.activeSessions(accessToken),
             sessionsApi.recent(accessToken),
             shopApi.listCues(accessToken),
+            hallsApi.recentCompetitions(accessToken),
           ])
 
           return {
@@ -55,6 +58,7 @@ export function DashboardPage() {
             activePlayers,
             recentSessions,
             equippedCue: cues.find((cue) => cue.isEquipped) ?? null,
+            champions,
           }
         })
 
@@ -97,15 +101,6 @@ export function DashboardPage() {
           <div className="stats-row">
             <Card title="Crew Points" subtitle="Spend in the cue shop">
               <div className="metric-value">{data.profile.points}</div>
-            </Card>
-
-            <Card title="Core Stats" subtitle="Manual for now, auto-scaling later">
-              <div className="stats-list">
-                <StatMini label="Power" value={data.profile.power} />
-                <StatMini label="Accuracy" value={data.profile.accuracy} />
-                <StatMini label="Cue" value={data.profile.cueControl} />
-                <StatMini label="Spin" value={data.profile.spin} />
-              </div>
             </Card>
 
             <Card title="Halls In Network" subtitle="User-discovered places">
@@ -169,6 +164,33 @@ export function DashboardPage() {
             </Card>
           </div>
 
+          <Card title="Daily Champions" subtitle="Latest hall competition winners">
+            {data.champions.length === 0 ? (
+              <p className="state-text">No finalized hall competitions yet.</p>
+            ) : (
+              <ul className="stack-list">
+                {data.champions.map((competition) => (
+                  <li key={`${competition.poolHallId}-${competition.poolDate}`} className="row-item">
+                    <AvatarChip
+                      displayName={competition.winnerDisplayName ?? 'No winner'}
+                      colorHex="#b8862f"
+                      size="sm"
+                    />
+                    <div>
+                      <strong>{competition.winnerDisplayName ?? 'No winner'}</strong>
+                      <span>
+                        {competition.hallName} • {competition.poolDate}
+                      </span>
+                    </div>
+                    <small>
+                      {competition.participantCount} players • {competition.totalSessions} sessions
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
           <Card title="Recent Sessions" subtitle="Your latest reports">
             {data.recentSessions.length === 0 ? (
               <p className="state-text">You have no completed sessions yet.</p>
@@ -196,20 +218,6 @@ export function DashboardPage() {
           </Card>
         </>
       ) : null}
-    </div>
-  )
-}
-
-type StatMiniProps = {
-  label: string
-  value: number
-}
-
-function StatMini({ label, value }: StatMiniProps) {
-  return (
-    <div className="stat-mini">
-      <span>{label}</span>
-      <strong>{value.toFixed(1)}</strong>
     </div>
   )
 }

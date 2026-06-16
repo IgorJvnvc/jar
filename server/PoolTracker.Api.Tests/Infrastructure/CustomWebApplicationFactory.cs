@@ -5,12 +5,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using PoolTracker.Api.Data;
+using PoolTracker.Api.Services;
 
 namespace PoolTracker.Api.Tests.Infrastructure;
 
 public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private SqliteConnection? sqliteConnection;
+
+    public TestTimeProvider Clock { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -32,6 +35,19 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
             {
                 options.UseSqlite(provider.GetRequiredService<SqliteConnection>());
             });
+
+            // Drive the pool-day clock/engine from a controllable time source for deterministic tests.
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<TimeProvider>(Clock);
+
+            // The pool-day sweep runs on a timer in production; tests drive the engine explicitly,
+            // so remove the background service to keep database state deterministic.
+            var sweepDescriptor = services.SingleOrDefault(
+                descriptor => descriptor.ImplementationType == typeof(PoolDayBackgroundService));
+            if (sweepDescriptor is not null)
+            {
+                services.Remove(sweepDescriptor);
+            }
         });
     }
 
@@ -42,6 +58,8 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     public async Task ResetDatabaseAsync()
     {
+        Clock.Unfreeze();
+
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<PoolTrackerDbContext>();
 

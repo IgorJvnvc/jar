@@ -47,6 +47,31 @@ npm install --prefix client
 npm run dev --prefix client
 ```
 
+### Database migrations
+
+The API uses EF Core migrations. On startup the app applies any pending migrations
+automatically against Postgres; the integration tests provision their SQLite schema
+directly from the model instead.
+
+Create a migration after changing the domain model or `PoolTrackerDbContext`:
+
+```bash
+dotnet tool install --global dotnet-ef --version 8.0.24   # one-time
+dotnet ef migrations add <Name> --project server/PoolTracker.Api
+```
+
+A design-time factory (`PoolTrackerDbContextFactory`) supplies the Npgsql provider and
+connection string, so migrations can be generated without starting the web host.
+
+> One-time reset: dev databases created before migrations were adopted (via
+> `EnsureCreated`) have no migration history and will fail `MigrateAsync` on startup.
+> Drop and recreate the dev database once so the baseline `InitialCreate` migration can
+> apply cleanly:
+>
+> ```bash
+> dropdb -U postgres pooltracker_dev && createdb -U postgres pooltracker_dev
+> ```
+
 ## Native push setup
 
 - Android Firebase config: `client/android/app/google-services.json`

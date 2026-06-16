@@ -10,7 +10,8 @@ public enum PointsTransactionType
     DuelLoss = 6,
     ShopPurchase = 7,
     ManualAdjustment = 8,
-    DebtPayment = 9
+    DebtPayment = 9,
+    HallDayWin = 10
 }
 
 public sealed class PointsTransaction

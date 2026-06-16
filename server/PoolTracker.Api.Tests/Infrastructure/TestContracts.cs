@@ -51,7 +51,32 @@ internal sealed record SessionResponseDto(
     int GamesLost,
     int SnookersEscaped,
     int AwardedPoints,
-    string? Notes
+    string? Notes,
+    string? EndReason
+);
+
+internal sealed record HallDayCompetitionEntryResponseDto(
+    Guid UserId,
+    string DisplayName,
+    int Rank,
+    int GamesWon,
+    int GamesLost,
+    int BallsPotted,
+    int SessionsCompleted,
+    int MinutesPlayed
+);
+
+internal sealed record HallDayCompetitionResponseDto(
+    Guid PoolHallId,
+    string HallName,
+    DateOnly PoolDate,
+    bool IsFinalized,
+    Guid? WinnerUserId,
+    string? WinnerDisplayName,
+    int ParticipantCount,
+    int TotalSessions,
+    DateTimeOffset? FinalizedAtUtc,
+    IReadOnlyList<HallDayCompetitionEntryResponseDto> Entries
 );
 
 internal sealed record PoolHallResponseDto(

@@ -43,6 +43,10 @@ public sealed class PoolTrackerDbContext : IdentityDbContext<ApplicationUser, Id
 
     public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
 
+    public DbSet<HallDayCompetition> HallDayCompetitions => Set<HallDayCompetition>();
+
+    public DbSet<HallDayCompetitionEntry> HallDayCompetitionEntries => Set<HallDayCompetitionEntry>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -392,6 +396,44 @@ public sealed class PoolTrackerDbContext : IdentityDbContext<ApplicationUser, Id
                 .WithMany(user => user.DeviceTokens)
                 .HasForeignKey(deviceToken => deviceToken.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<HallDayCompetition>(entity =>
+        {
+            entity.HasKey(competition => competition.Id);
+
+            entity.HasIndex(competition => new { competition.PoolHallId, competition.PoolDate })
+                .IsUnique();
+
+            entity.HasIndex(competition => competition.PoolDate);
+
+            entity.HasOne(competition => competition.PoolHall)
+                .WithMany()
+                .HasForeignKey(competition => competition.PoolHallId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(competition => competition.WinnerUser)
+                .WithMany()
+                .HasForeignKey(competition => competition.WinnerUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<HallDayCompetitionEntry>(entity =>
+        {
+            entity.HasKey(entry => entry.Id);
+
+            entity.HasIndex(entry => new { entry.HallDayCompetitionId, entry.UserId })
+                .IsUnique();
+
+            entity.HasOne(entry => entry.Competition)
+                .WithMany(competition => competition.Entries)
+                .HasForeignKey(entry => entry.HallDayCompetitionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(entry => entry.User)
+                .WithMany()
+                .HasForeignKey(entry => entry.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

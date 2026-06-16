@@ -14,16 +14,4 @@ public sealed class UpdateProfileRequest
 
     [Range(1, 15)]
     public int? FavoriteBallNumber { get; init; }
-
-    [Range(0, 100)]
-    public decimal Power { get; init; }
-
-    [Range(0, 100)]
-    public decimal Accuracy { get; init; }
-
-    [Range(0, 100)]
-    public decimal CueControl { get; init; }
-
-    [Range(0, 100)]
-    public decimal Spin { get; init; }
 }

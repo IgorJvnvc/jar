@@ -10,7 +10,16 @@ public static class SeedDataExtensions
         await using var scope = services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<PoolTrackerDbContext>();
 
-        await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        // Production (Postgres) applies EF migrations; the SQLite integration-test provider has no
+        // migration history and provisions the schema directly from the model.
+        if (dbContext.Database.IsNpgsql())
+        {
+            await dbContext.Database.MigrateAsync(cancellationToken);
+        }
+        else
+        {
+            await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        }
 
         if (await dbContext.CueItems.AnyAsync(cancellationToken))
         {

@@ -69,10 +69,6 @@ public sealed class ProfileController : ControllerBase
         user.DisplayName = request.DisplayName.Trim();
         profile.AvatarColorHex = request.AvatarColorHex;
         profile.FavoriteBallNumber = request.FavoriteBallNumber;
-        profile.Power = request.Power;
-        profile.Accuracy = request.Accuracy;
-        profile.CueControl = request.CueControl;
-        profile.Spin = request.Spin;
         profile.UpdatedAtUtc = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);

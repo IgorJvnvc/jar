@@ -39,10 +39,6 @@ export type UpdateProfileRequest = {
   displayName: string
   avatarColorHex: string
   favoriteBallNumber: number | null
-  power: number
-  accuracy: number
-  cueControl: number
-  spin: number
 }
 
 export type CueRarity = 'Common' | 'Rare' | 'Epic' | 'Legendary'
@@ -91,6 +87,30 @@ export type PoolHallDetailResponse = {
   overallScore: number
   ratingsCount: number
   tables: PoolHallTableResponse[]
+}
+
+export type HallDayCompetitionEntryResponse = {
+  userId: Guid
+  displayName: string
+  rank: number
+  gamesWon: number
+  gamesLost: number
+  ballsPotted: number
+  sessionsCompleted: number
+  minutesPlayed: number
+}
+
+export type HallDayCompetitionResponse = {
+  poolHallId: Guid
+  hallName: string
+  poolDate: string
+  isFinalized: boolean
+  winnerUserId: Guid | null
+  winnerDisplayName: string | null
+  participantCount: number
+  totalSessions: number
+  finalizedAtUtc: string | null
+  entries: HallDayCompetitionEntryResponse[]
 }
 
 export type ActiveSessionPlayerResponse = {

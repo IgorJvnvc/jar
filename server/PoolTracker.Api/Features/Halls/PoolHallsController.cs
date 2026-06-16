@@ -20,11 +20,19 @@ public sealed class PoolHallsController : ControllerBase
 
     private readonly PoolTrackerDbContext dbContext;
     private readonly IPointsLedgerService pointsLedger;
+    private readonly IPoolDayEngine poolDayEngine;
+    private readonly IPoolDayClock poolDayClock;
 
-    public PoolHallsController(PoolTrackerDbContext dbContext, IPointsLedgerService pointsLedger)
+    public PoolHallsController(
+        PoolTrackerDbContext dbContext,
+        IPointsLedgerService pointsLedger,
+        IPoolDayEngine poolDayEngine,
+        IPoolDayClock poolDayClock)
     {
         this.dbContext = dbContext;
         this.pointsLedger = pointsLedger;
+        this.poolDayEngine = poolDayEngine;
+        this.poolDayClock = poolDayClock;
     }
 
     [HttpGet]
@@ -97,6 +105,130 @@ public sealed class PoolHallsController : ControllerBase
                 .ToList());
 
         return Ok(response);
+    }
+
+    [HttpGet("competitions/recent")]
+    public async Task<ActionResult<IReadOnlyList<HallDayCompetitionResponse>>> GetRecentCompetitions(CancellationToken cancellationToken)
+    {
+        var competitions = await dbContext.HallDayCompetitions
+            .AsNoTracking()
+            .Include(competition => competition.PoolHall)
+            .OrderByDescending(competition => competition.PoolDate)
+            .ThenByDescending(competition => competition.WinnerGamesWon)
+            .Take(20)
+            .ToListAsync(cancellationToken);
+
+        var winnerIds = competitions
+            .Where(competition => competition.WinnerUserId.HasValue)
+            .Select(competition => competition.WinnerUserId!.Value)
+            .Distinct()
+            .ToList();
+
+        var winnerNames = await dbContext.Users
+            .AsNoTracking()
+            .Where(user => winnerIds.Contains(user.Id))
+            .ToDictionaryAsync(user => user.Id, user => user.DisplayName, cancellationToken);
+
+        var responses = competitions
+            .Select(competition => new HallDayCompetitionResponse(
+                competition.PoolHallId,
+                competition.PoolHall.Name,
+                competition.PoolDate,
+                true,
+                competition.WinnerUserId,
+                competition.WinnerUserId is { } winnerId ? winnerNames.GetValueOrDefault(winnerId, "Player") : null,
+                competition.ParticipantCount,
+                competition.TotalSessions,
+                competition.FinalizedAtUtc,
+                Array.Empty<HallDayCompetitionEntryResponse>()))
+            .ToList();
+
+        return Ok(responses);
+    }
+
+    [HttpGet("{hallId:guid}/competition")]
+    public async Task<ActionResult<HallDayCompetitionResponse>> GetHallCompetition(
+        Guid hallId,
+        [FromQuery] DateOnly? date,
+        CancellationToken cancellationToken)
+    {
+        var hall = await dbContext.PoolHalls
+            .AsNoTracking()
+            .SingleOrDefaultAsync(current => current.Id == hallId, cancellationToken);
+
+        if (hall is null)
+        {
+            return NotFound(new { message = "Pool hall not found." });
+        }
+
+        var poolDate = date ?? poolDayClock.CurrentPoolDate();
+
+        var competition = await dbContext.HallDayCompetitions
+            .AsNoTracking()
+            .Include(current => current.Entries)
+            .SingleOrDefaultAsync(current => current.PoolHallId == hallId && current.PoolDate == poolDate, cancellationToken);
+
+        if (competition is not null)
+        {
+            var userIds = competition.Entries.Select(entry => entry.UserId).ToList();
+            var displayNames = await dbContext.Users
+                .AsNoTracking()
+                .Where(user => userIds.Contains(user.Id))
+                .ToDictionaryAsync(user => user.Id, user => user.DisplayName, cancellationToken);
+
+            var finalizedEntries = competition.Entries
+                .OrderBy(entry => entry.Rank)
+                .Select(entry => new HallDayCompetitionEntryResponse(
+                    entry.UserId,
+                    displayNames.GetValueOrDefault(entry.UserId, "Player"),
+                    entry.Rank,
+                    entry.GamesWon,
+                    entry.GamesLost,
+                    entry.BallsPotted,
+                    entry.SessionsCompleted,
+                    entry.MinutesPlayed))
+                .ToList();
+
+            return Ok(new HallDayCompetitionResponse(
+                hallId,
+                hall.Name,
+                poolDate,
+                true,
+                competition.WinnerUserId,
+                competition.WinnerUserId is { } winnerId ? displayNames.GetValueOrDefault(winnerId, "Player") : null,
+                competition.ParticipantCount,
+                competition.TotalSessions,
+                competition.FinalizedAtUtc,
+                finalizedEntries));
+        }
+
+        // Not finalized yet — compute the live, in-progress standings.
+        var standings = await poolDayEngine.ComputeStandingsAsync(hallId, poolDate, cancellationToken);
+        var liveEntries = standings
+            .Select(standing => new HallDayCompetitionEntryResponse(
+                standing.UserId,
+                standing.DisplayName,
+                standing.Rank,
+                standing.GamesWon,
+                standing.GamesLost,
+                standing.BallsPotted,
+                standing.SessionsCompleted,
+                standing.MinutesPlayed))
+            .ToList();
+
+        var leader = standings.FirstOrDefault(standing => standing.GamesWon > 0);
+
+        return Ok(new HallDayCompetitionResponse(
+            hallId,
+            hall.Name,
+            poolDate,
+            false,
+            leader?.UserId,
+            leader?.DisplayName,
+            liveEntries.Count,
+            liveEntries.Sum(entry => entry.SessionsCompleted),
+            null,
+            liveEntries));
     }
 
     [HttpPost]

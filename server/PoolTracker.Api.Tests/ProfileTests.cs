@@ -95,7 +95,7 @@ public sealed class ProfileTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task UpdateProfile_PersistsUserAndStats()
+    public async Task UpdateProfile_PersistsDisplayFields_AndIgnoresRetiredStats()
     {
         var session = await RegisterAndLoginAsync("ProfileUpdate");
 
@@ -104,6 +104,7 @@ public sealed class ProfileTests : IntegrationTestBase
             displayName = "Updated Name",
             avatarColorHex = "#445566",
             favoriteBallNumber = 8,
+            // Retired self-rated attributes: the server must ignore these even if a stale client sends them.
             power = 71.5m,
             accuracy = 62.5m,
             cueControl = 59m,
@@ -116,10 +117,12 @@ public sealed class ProfileTests : IntegrationTestBase
         Assert.Equal("Updated Name", profile.DisplayName);
         Assert.Equal("#445566", profile.AvatarColorHex);
         Assert.Equal(8, profile.FavoriteBallNumber);
-        Assert.Equal(71.5m, profile.Power);
-        Assert.Equal(62.5m, profile.Accuracy);
-        Assert.Equal(59m, profile.CueControl);
-        Assert.Equal(88.5m, profile.Spin);
+
+        // Attributes are no longer user-editable; they remain at their seeded default (50).
+        Assert.Equal(50m, profile.Power);
+        Assert.Equal(50m, profile.Accuracy);
+        Assert.Equal(50m, profile.CueControl);
+        Assert.Equal(50m, profile.Spin);
     }
 
     [Fact]
