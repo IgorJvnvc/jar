@@ -329,6 +329,60 @@ select {
   font-size: 1rem;
 }
 
+.skill-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.skill-stat {
+  background: rgba(9, 18, 23, 0.6);
+  border: 1px solid rgba(138, 173, 161, 0.16);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.skill-stat__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.skill-stat__name {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.skill-stat__value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  color: var(--pool-gold);
+}
+
+.skill-stat__bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.skill-stat__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--pool-green), var(--pool-gold));
+}
+
+.skill-stat__detail {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+}
+
 .stack-list {
   list-style: none;
   margin: 0;
@@ -610,6 +664,70 @@ select {
 .active-session-summary p {
   margin: 0;
   color: var(--text-dim);
+}
+
+.session-tally {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.session-tally__item {
+  background: rgba(9, 18, 23, 0.6);
+  border: 1px solid rgba(138, 173, 161, 0.16);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.6rem;
+  display: grid;
+  gap: 0.15rem;
+  text-align: center;
+}
+
+.session-tally__item span {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.session-tally__item strong {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+}
+
+.game-logger {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.game-logger__title {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.session-form-grid--cols {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  color: var(--text-main);
+}
+
+.checkbox-field input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--pool-gold);
+}
+
+.session-review {
+  display: grid;
+  gap: 0.85rem;
 }
 
 .section-divider {

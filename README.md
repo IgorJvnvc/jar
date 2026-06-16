@@ -125,5 +125,6 @@ Signed APK output path:
 
 - **Phase 1 (done)** — Duel game-feel and player identity.
 - **Phase 2 (done)** — Player records and duel leaderboard.
-- **Phase 3 (planned)** — Pool-day engine: background auto-stop/settlement, daily hall competition, retire manual stat editing.
-- **Phase 4+ (planned)** — Levels/XP, achievements, cue stat bonuses, match simulation.
+- **Phase 3 (done)** — Pool-day engine: background auto-stop/settlement, daily hall competition, retire manual stat editing.
+- **Phase 4a (done)** — Live per-game session tracking, per-session skill scoring (power/accuracy/cue control/spin), golden-break bonus, and cue-aware effective stats.
+- **Phase 4+ (planned)** — Levels/XP, achievements, and match simulation.

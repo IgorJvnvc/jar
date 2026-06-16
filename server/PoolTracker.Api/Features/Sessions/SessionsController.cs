@@ -17,15 +17,18 @@ public sealed class SessionsController : ControllerBase
 {
     private readonly PoolTrackerDbContext dbContext;
     private readonly ISessionSettlementService sessionSettlement;
+    private readonly IPlayerSkillCalculator skillCalculator;
     private readonly INotificationService notificationService;
 
     public SessionsController(
         PoolTrackerDbContext dbContext,
         ISessionSettlementService sessionSettlement,
+        IPlayerSkillCalculator skillCalculator,
         INotificationService notificationService)
     {
         this.dbContext = dbContext;
         this.sessionSettlement = sessionSettlement;
+        this.skillCalculator = skillCalculator;
         this.notificationService = notificationService;
     }
 
@@ -144,16 +147,35 @@ public sealed class SessionsController : ControllerBase
         }
 
         var now = DateTimeOffset.UtcNow;
+
+        var games = request.Games
+            .Select((entry, index) => new SessionGame
+            {
+                Id = Guid.NewGuid(),
+                SessionId = session.Id,
+                Sequence = index + 1,
+                GameType = entry.GameType,
+                BrokeThisRack = entry.BrokeThisRack,
+                BreakPots = entry.BrokeThisRack ? entry.BreakPots : 0,
+                BallsPotted = entry.BallsPotted,
+                SnookersFaced = entry.SnookersFaced,
+                SnookersEscaped = entry.SnookersEscaped,
+                Won = entry.Won,
+                GoldenBreak = entry.GoldenBreak,
+                CreatedAtUtc = now
+            })
+            .ToList();
+
+        if (games.Count > 0)
+        {
+            dbContext.SessionGames.AddRange(games);
+        }
+
+        var skills = skillCalculator.Calculate(games);
+
         var awardedPoints = await sessionSettlement.SettleAsync(
             session,
-            new SessionSettlementInput(
-                request.BallsPotted,
-                request.GamesWon,
-                request.GamesLost,
-                request.SnookersEscaped,
-                request.Notes,
-                SessionEndReason.Manual,
-                now),
+            new SessionSettlementInput(request.Notes, SessionEndReason.Manual, now, skills),
             cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -211,9 +233,17 @@ public sealed class SessionsController : ControllerBase
             session.IsActive,
             report?.FlaggedForValidation ?? false,
             report?.BallsPotted ?? 0,
+            report?.BallsPottedOnBreak ?? 0,
             report?.GamesWon ?? 0,
             report?.GamesLost ?? 0,
+            report?.GamesBroken ?? 0,
+            report?.SnookersFaced ?? 0,
             report?.SnookersEscaped ?? 0,
+            report?.GoldenBreaks ?? 0,
+            report?.PowerDelta ?? 0m,
+            report?.AccuracyDelta ?? 0m,
+            report?.CueControlDelta ?? 0m,
+            report?.SpinDelta ?? 0m,
             awardedPoints,
             report?.Notes,
             session.EndReason);

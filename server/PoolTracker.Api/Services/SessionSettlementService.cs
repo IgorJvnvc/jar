@@ -7,13 +7,10 @@ using PoolTracker.Api.Domain.Entities;
 namespace PoolTracker.Api.Services;
 
 public sealed record SessionSettlementInput(
-    int BallsPotted,
-    int GamesWon,
-    int GamesLost,
-    int SnookersEscaped,
     string? Notes,
     SessionEndReason EndReason,
-    DateTimeOffset EndedAtUtc);
+    DateTimeOffset EndedAtUtc,
+    SkillCalculationResult Skills);
 
 public interface ISessionSettlementService
 {
@@ -27,6 +24,8 @@ public interface ISessionSettlementService
 
 public sealed class SessionSettlementService : ISessionSettlementService
 {
+    private const int GoldenBreakBonusPoints = 500;
+
     private readonly PoolTrackerDbContext dbContext;
     private readonly IPointsLedgerService pointsLedger;
     private readonly IPoolDayClock poolDayClock;
@@ -46,6 +45,8 @@ public sealed class SessionSettlementService : ISessionSettlementService
 
     public async Task<int> SettleAsync(Session session, SessionSettlementInput input, CancellationToken cancellationToken)
     {
+        var skills = input.Skills;
+
         session.EndedAtUtc = input.EndedAtUtc;
         session.IsActive = false;
         session.EndReason = input.EndReason;
@@ -61,32 +62,71 @@ public sealed class SessionSettlementService : ISessionSettlementService
             ? rawMinutes
             : Math.Min(rawMinutes, options.IdleCapHours * 60d);
 
-        var flagged = IsPotentialOutlier(rawMinutes, input.BallsPotted);
+        // Golden-break wins are always flagged for a manual sanity check; otherwise fall back to pace.
+        var flagged = skills.HasGoldenBreakWin || IsPotentialOutlier(rawMinutes, skills.BallsPotted);
 
         session.Report ??= new SessionReport
         {
             SessionId = session.Id,
-            BallsPotted = input.BallsPotted,
-            GamesWon = input.GamesWon,
-            GamesLost = input.GamesLost,
-            SnookersEscaped = input.SnookersEscaped,
+            BallsPotted = skills.BallsPotted,
+            BallsPottedOnBreak = skills.BallsPottedOnBreak,
+            GamesWon = skills.GamesWon,
+            GamesLost = skills.GamesLost,
+            GamesBroken = skills.GamesBroken,
+            SnookersEscaped = skills.SnookersEscaped,
+            SnookersFaced = skills.SnookersFaced,
+            GoldenBreaks = skills.GoldenBreakWins,
+            PowerDelta = skills.PowerDelta,
+            AccuracyDelta = skills.AccuracyDelta,
+            CueControlDelta = skills.CueControlDelta,
+            SpinDelta = skills.SpinDelta,
             Notes = NormalizeNotes(input.Notes),
             FlaggedForValidation = flagged,
             SubmittedAtUtc = input.EndedAtUtc
         };
 
-        var awardedPoints = CalculateSessionPoints(pointsMinutes);
+        var sessionPoints = CalculateSessionPoints(pointsMinutes);
         await pointsLedger.AwardPointsAsync(
             session.UserId,
-            awardedPoints,
+            sessionPoints,
             PointsTransactionType.SessionCompletion,
             input.EndReason == SessionEndReason.Manual ? "Completed a pool session" : "Auto-closed pool session",
             session.Id,
             cancellationToken);
 
+        // Flat shop-points bonus per golden-break win (AwardPointsAsync no-ops when the total is 0).
+        var goldenPoints = GoldenBreakBonusPoints * skills.GoldenBreakWins;
+        await pointsLedger.AwardPointsAsync(
+            session.UserId,
+            goldenPoints,
+            PointsTransactionType.GoldenBreak,
+            "Golden break bonus",
+            session.Id,
+            cancellationToken);
+
+        await ApplySkillDeltasAsync(session.UserId, skills, cancellationToken);
+
         await UpsertDailyMetricAsync(session.UserId, input, cancellationToken);
 
-        return awardedPoints;
+        return sessionPoints + goldenPoints;
+    }
+
+    private async Task ApplySkillDeltasAsync(Guid userId, SkillCalculationResult skills, CancellationToken cancellationToken)
+    {
+        if (skills.PowerDelta == 0m
+            && skills.AccuracyDelta == 0m
+            && skills.CueControlDelta == 0m
+            && skills.SpinDelta == 0m)
+        {
+            return;
+        }
+
+        var profile = await pointsLedger.GetOrCreateProfileAsync(userId, cancellationToken);
+        profile.Power = ClampStat(profile.Power + skills.PowerDelta);
+        profile.Accuracy = ClampStat(profile.Accuracy + skills.AccuracyDelta);
+        profile.CueControl = ClampStat(profile.CueControl + skills.CueControlDelta);
+        profile.Spin = ClampStat(profile.Spin + skills.SpinDelta);
+        profile.UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 
     private async Task UpsertDailyMetricAsync(Guid userId, SessionSettlementInput input, CancellationToken cancellationToken)
@@ -106,10 +146,15 @@ public sealed class SessionSettlementService : ISessionSettlementService
             dbContext.PlayerDailyMetrics.Add(metric);
         }
 
-        metric.TotalBallsPotted += input.BallsPotted;
-        metric.TotalGamesWon += input.GamesWon;
-        metric.TotalGamesLost += input.GamesLost;
+        metric.TotalBallsPotted += input.Skills.BallsPotted;
+        metric.TotalGamesWon += input.Skills.GamesWon;
+        metric.TotalGamesLost += input.Skills.GamesLost;
         metric.SessionsCompleted += 1;
+    }
+
+    private static decimal ClampStat(decimal value)
+    {
+        return Math.Clamp(value, 0m, 100m);
     }
 
     private static bool IsPotentialOutlier(double durationMinutes, int ballsPotted)

@@ -120,6 +120,7 @@ builder.Services.AddScoped<IPushNotificationService, PushNotificationService>();
 builder.Services.Configure<PoolDayOptions>(builder.Configuration.GetSection(PoolDayOptions.SectionName));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPoolDayClock, PoolDayClock>();
+builder.Services.AddSingleton<IPlayerSkillCalculator, PlayerSkillCalculator>();
 builder.Services.AddScoped<ISessionSettlementService, SessionSettlementService>();
 builder.Services.AddScoped<IPoolDayEngine, PoolDayEngine>();
 builder.Services.AddHostedService<PoolDayBackgroundService>();

@@ -28,6 +28,10 @@ export type ProfileResponse = {
   accuracy: number
   cueControl: number
   spin: number
+  effectivePower: number
+  effectiveAccuracy: number
+  effectiveCueControl: number
+  effectiveSpin: number
   duelsWon: number
   duelsLost: number
   gamesWon: number
@@ -161,6 +165,8 @@ export type DuelLeaderboardEntryResponse = {
   title: string | null
 }
 
+export type SessionEndReason = 'Manual' | 'AutoIdle' | 'AutoDayClose'
+
 export type SessionResponse = {
   id: Guid
   poolHallId: Guid
@@ -170,11 +176,20 @@ export type SessionResponse = {
   isActive: boolean
   isFlaggedForValidation: boolean
   ballsPotted: number
+  ballsPottedOnBreak: number
   gamesWon: number
   gamesLost: number
+  gamesBroken: number
+  snookersFaced: number
   snookersEscaped: number
+  goldenBreaks: number
+  powerDelta: number
+  accuracyDelta: number
+  cueControlDelta: number
+  spinDelta: number
   awardedPoints: number
   notes: string | null
+  endReason: SessionEndReason | null
 }
 
 export type StartSessionRequest = {
@@ -182,11 +197,21 @@ export type StartSessionRequest = {
   poolHallTableId: Guid | null
 }
 
-export type EndSessionRequest = {
+export type GameType = 'EightBall' | 'NineBall'
+
+export type GameLogEntry = {
+  gameType: GameType
+  brokeThisRack: boolean
+  breakPots: number
   ballsPotted: number
-  gamesWon: number
-  gamesLost: number
+  snookersFaced: number
   snookersEscaped: number
+  won: boolean
+  goldenBreak: boolean
+}
+
+export type EndSessionRequest = {
+  games: GameLogEntry[]
   notes: string | null
 }
 

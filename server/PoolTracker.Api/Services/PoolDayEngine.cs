@@ -124,7 +124,7 @@ public sealed class PoolDayEngine : IPoolDayEngine
 
             await settlement.SettleAsync(
                 session,
-                new SessionSettlementInput(0, 0, 0, 0, null, reason, endedAt),
+                new SessionSettlementInput(null, reason, endedAt, SkillCalculationResult.Empty),
                 cancellationToken);
             stopped++;
         }

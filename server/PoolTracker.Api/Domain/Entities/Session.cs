@@ -21,6 +21,8 @@ public sealed class Session
 
     public SessionReport? Report { get; set; }
 
+    public ICollection<SessionGame> Games { get; set; } = new List<SessionGame>();
+
     public ApplicationUser User { get; set; } = null!;
 
     public PoolHall PoolHall { get; set; } = null!;

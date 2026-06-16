@@ -44,7 +44,8 @@ public sealed class ProfileController : ControllerBase
         var profile = await pointsLedger.GetOrCreateProfileAsync(user.Id, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         var (gamesWon, gamesLost) = await GetGeneralRecordAsync(user.Id, cancellationToken);
-        return Ok(ToResponse(user, profile, gamesWon, gamesLost));
+        var equippedCue = await GetEquippedCueAsync(user.Id, cancellationToken);
+        return Ok(ToResponse(user, profile, gamesWon, gamesLost, equippedCue));
     }
 
     [HttpPut("me")]
@@ -74,8 +75,9 @@ public sealed class ProfileController : ControllerBase
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var (gamesWon, gamesLost) = await GetGeneralRecordAsync(user.Id, cancellationToken);
+        var equippedCue = await GetEquippedCueAsync(user.Id, cancellationToken);
 
-        return Ok(ToResponse(user, profile, gamesWon, gamesLost));
+        return Ok(ToResponse(user, profile, gamesWon, gamesLost, equippedCue));
     }
 
     [HttpPost("pay-debt")]
@@ -101,16 +103,23 @@ public sealed class ProfileController : ControllerBase
         var profile = await pointsLedger.GetOrCreateProfileAsync(userId.Value, cancellationToken);
 
         var (gamesWon, gamesLost) = await GetGeneralRecordAsync(userId.Value, cancellationToken);
+        var equippedCue = await GetEquippedCueAsync(userId.Value, cancellationToken);
 
-        return Ok(new PayDebtResponse(paidPoints, ToResponse(user, profile, gamesWon, gamesLost)));
+        return Ok(new PayDebtResponse(paidPoints, ToResponse(user, profile, gamesWon, gamesLost, equippedCue)));
     }
 
     private static ProfileResponse ToResponse(
         ApplicationUser user,
         PlayerProfile profile,
         int gamesWon,
-        int gamesLost)
+        int gamesLost,
+        CueItem? equippedCue)
     {
+        var powerBonus = equippedCue?.PowerBonus ?? 0m;
+        var accuracyBonus = equippedCue?.AccuracyBonus ?? 0m;
+        var cueControlBonus = equippedCue?.CueControlBonus ?? 0m;
+        var spinBonus = equippedCue?.SpinBonus ?? 0m;
+
         return new ProfileResponse(
             user.Id,
             user.DisplayName,
@@ -124,11 +133,29 @@ public sealed class ProfileController : ControllerBase
             profile.Accuracy,
             profile.CueControl,
             profile.Spin,
+            ClampStat(profile.Power + powerBonus),
+            ClampStat(profile.Accuracy + accuracyBonus),
+            ClampStat(profile.CueControl + cueControlBonus),
+            ClampStat(profile.Spin + spinBonus),
             profile.DuelsWon,
             profile.DuelsLost,
             gamesWon,
             gamesLost,
             profile.UpdatedAtUtc);
+    }
+
+    private static decimal ClampStat(decimal value)
+    {
+        return Math.Clamp(value, 0m, 100m);
+    }
+
+    private async Task<CueItem?> GetEquippedCueAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        return await dbContext.UserCueInventories
+            .AsNoTracking()
+            .Where(inventory => inventory.UserId == userId && inventory.IsEquipped)
+            .Select(inventory => inventory.CueItem)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task<(int GamesWon, int GamesLost)> GetGeneralRecordAsync(Guid userId, CancellationToken cancellationToken)

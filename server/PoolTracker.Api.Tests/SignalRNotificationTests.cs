@@ -49,10 +49,20 @@ public sealed class SignalRNotificationTests : IntegrationTestBase
 
         var end = await TestApi.PostAsync(actor, $"/api/sessions/{startedSession.Id}/end", new
         {
-            ballsPotted = 12,
-            gamesWon = 1,
-            gamesLost = 0,
-            snookersEscaped = 0,
+            games = new[]
+            {
+                new
+                {
+                    gameType = "EightBall",
+                    brokeThisRack = false,
+                    breakPots = 0,
+                    ballsPotted = 12,
+                    snookersFaced = 0,
+                    snookersEscaped = 0,
+                    won = true,
+                    goldenBreak = false
+                }
+            },
             notes = "signalr"
         });
         await TestApi.EnsureSuccessAsync(end);

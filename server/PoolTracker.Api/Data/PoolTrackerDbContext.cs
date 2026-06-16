@@ -27,6 +27,8 @@ public sealed class PoolTrackerDbContext : IdentityDbContext<ApplicationUser, Id
 
     public DbSet<SessionReport> SessionReports => Set<SessionReport>();
 
+    public DbSet<SessionGame> SessionGames => Set<SessionGame>();
+
     public DbSet<PointsTransaction> PointsTransactions => Set<PointsTransaction>();
 
     public DbSet<PlayerDailyMetric> PlayerDailyMetrics => Set<PlayerDailyMetric>();
@@ -228,9 +230,34 @@ public sealed class PoolTrackerDbContext : IdentityDbContext<ApplicationUser, Id
             entity.Property(report => report.Notes)
                 .HasMaxLength(750);
 
+            entity.Property(report => report.PowerDelta)
+                .HasPrecision(6, 2);
+
+            entity.Property(report => report.AccuracyDelta)
+                .HasPrecision(6, 2);
+
+            entity.Property(report => report.CueControlDelta)
+                .HasPrecision(6, 2);
+
+            entity.Property(report => report.SpinDelta)
+                .HasPrecision(6, 2);
+
             entity.HasOne(report => report.Session)
                 .WithOne(session => session.Report)
                 .HasForeignKey<SessionReport>(report => report.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<SessionGame>(entity =>
+        {
+            entity.HasKey(game => game.Id);
+
+            entity.HasIndex(game => new { game.SessionId, game.Sequence })
+                .IsUnique();
+
+            entity.HasOne(game => game.Session)
+                .WithMany(session => session.Games)
+                .HasForeignKey(game => game.SessionId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -136,6 +136,35 @@ export function ProfilePage() {
             </Card>
           </div>
 
+          <Card title="Skill Stats" subtitle="Earned through session play; equipped cue bonuses included">
+            <div className="skill-stats">
+              <SkillStat
+                name="Power"
+                effective={profile.effectivePower}
+                base={profile.power}
+                bonus={equippedCue?.powerBonus ?? 0}
+              />
+              <SkillStat
+                name="Accuracy"
+                effective={profile.effectiveAccuracy}
+                base={profile.accuracy}
+                bonus={equippedCue?.accuracyBonus ?? 0}
+              />
+              <SkillStat
+                name="Cue Control"
+                effective={profile.effectiveCueControl}
+                base={profile.cueControl}
+                bonus={equippedCue?.cueControlBonus ?? 0}
+              />
+              <SkillStat
+                name="Spin"
+                effective={profile.effectiveSpin}
+                base={profile.spin}
+                bonus={equippedCue?.spinBonus ?? 0}
+              />
+            </div>
+          </Card>
+
           <div className="two-column">
             <Card title="Avatar Placeholder" subtitle="Temporary until final style is chosen">
             <div className="avatar-editor-preview">
@@ -234,4 +263,40 @@ function winRateLabel(won: number, lost: number): string {
   }
 
   return `${Math.round((won / played) * 100)}% win rate`
+}
+
+function formatStat(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, value))
+}
+
+function SkillStat({
+  name,
+  effective,
+  base,
+  bonus,
+}: {
+  name: string
+  effective: number
+  base: number
+  bonus: number
+}) {
+  return (
+    <div className="skill-stat">
+      <div className="skill-stat__head">
+        <span className="skill-stat__name">{name}</span>
+        <span className="skill-stat__value">{formatStat(effective)}</span>
+      </div>
+      <div className="skill-stat__bar">
+        <div className="skill-stat__bar-fill" style={{ width: `${clampPercent(effective)}%` }} />
+      </div>
+      <span className="skill-stat__detail">
+        Base {formatStat(base)}
+        {bonus !== 0 ? ` \u00b7 Cue ${bonus > 0 ? '+' : ''}${formatStat(bonus)}` : ''}
+      </span>
+    </div>
+  )
 }

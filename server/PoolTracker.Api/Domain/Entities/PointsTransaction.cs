@@ -11,7 +11,8 @@ public enum PointsTransactionType
     ShopPurchase = 7,
     ManualAdjustment = 8,
     DebtPayment = 9,
-    HallDayWin = 10
+    HallDayWin = 10,
+    GoldenBreak = 11
 }
 
 public sealed class PointsTransaction
