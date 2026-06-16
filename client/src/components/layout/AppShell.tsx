@@ -9,6 +9,7 @@ const navItems = [
   { to: '/sessions', label: 'Sessions' },
   { to: '/duels', label: 'Duels' },
   { to: '/halls', label: 'Halls' },
+  { to: '/leaderboard', label: 'Ranks' },
   { to: '/shop', label: 'Shop' },
   { to: '/profile', label: 'Profile' },
 ] as const

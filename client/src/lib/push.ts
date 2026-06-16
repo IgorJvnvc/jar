@@ -90,6 +90,21 @@ export async function requestPushRegistration(
   })
 }
 
+export async function addPushNavigationListener(
+  onNavigate: (route: string) => void,
+): Promise<void> {
+  if (!Capacitor.isNativePlatform()) {
+    return
+  }
+
+  await PushNotifications.addListener('pushNotificationActionPerformed', (event) => {
+    const route = asRoute(event.notification.data?.route)
+    if (route) {
+      onNavigate(route)
+    }
+  })
+}
+
 export async function removePushRegistration(token: string): Promise<void> {
   void token
 

@@ -1,5 +1,9 @@
 import { request } from '../lib/http'
-import type { ActiveSessionPlayerResponse, PlayerListItemResponse } from '../lib/types'
+import type {
+  ActiveSessionPlayerResponse,
+  LeaderboardEntryResponse,
+  PlayerListItemResponse,
+} from '../lib/types'
 
 export const playersApi = {
   activeSessions(accessToken: string): Promise<ActiveSessionPlayerResponse[]> {
@@ -10,6 +14,12 @@ export const playersApi = {
 
   list(accessToken: string): Promise<PlayerListItemResponse[]> {
     return request<PlayerListItemResponse[]>('/api/players', {
+      accessToken,
+    })
+  },
+
+  leaderboard(accessToken: string): Promise<LeaderboardEntryResponse[]> {
+    return request<LeaderboardEntryResponse[]>('/api/players/leaderboard', {
       accessToken,
     })
   },

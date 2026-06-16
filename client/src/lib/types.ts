@@ -111,6 +111,20 @@ export type PlayerListItemResponse = {
   title: string | null
 }
 
+export type LeaderboardEntryResponse = {
+  userId: Guid
+  displayName: string
+  avatarColorHex: string
+  points: number
+  totalGamesPlayed: number
+  totalGamesWon: number
+  totalGamesLost: number
+  winRate: number
+  totalBallsPotted: number
+  totalSessions: number
+  title: string | null
+}
+
 export type SessionResponse = {
   id: Guid
   poolHallId: Guid

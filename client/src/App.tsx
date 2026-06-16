@@ -5,6 +5,7 @@ import { RequireAuthRoute } from './components/routes/RequireAuthRoute'
 import { AuthPage } from './pages/AuthPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HallsPage } from './pages/HallsPage'
+import { LeaderboardPage } from './pages/LeaderboardPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SessionsPage } from './pages/SessionsPage'
@@ -35,6 +36,7 @@ function App() {
         <Route path="/sessions" element={<SessionsPage />} />
         <Route path="/duels" element={<DuelsPage />} />
         <Route path="/halls" element={<HallsPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>

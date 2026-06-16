@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
 using PoolTracker.Api.Domain.Entities;
 using PoolTracker.Api.Tests.Infrastructure;
 
@@ -23,6 +24,49 @@ public sealed class PlayersTests : IntegrationTestBase
 
         Assert.Contains(players, player => player.UserId == first.UserId);
         Assert.Contains(players, player => player.UserId == second.UserId);
+    }
+
+    [Fact]
+    public async Task GetLeaderboard_RanksByWinRateThenPoints()
+    {
+        var sharp = await RegisterAndLoginAsync("LeaderSharp");
+        var steady = await RegisterAndLoginAsync("LeaderSteady");
+        var rookie = await RegisterAndLoginAsync("LeaderRookie");
+
+        var hallId = await CreateHallAsync(sharp.UserId, "Leaderboard Hall");
+
+        // Sharp: 9 wins / 1 loss => 90% win rate, lower points.
+        await CreateReportedSessionAsync(sharp.UserId, hallId, gamesWon: 9, gamesLost: 1, ballsPotted: 40);
+        await SetPointsAsync(sharp.UserId, 300);
+
+        // Steady: 5 wins / 5 losses => 50% win rate, highest points.
+        await CreateReportedSessionAsync(steady.UserId, hallId, gamesWon: 5, gamesLost: 5, ballsPotted: 25);
+        await SetPointsAsync(steady.UserId, 900);
+
+        // Rookie: no completed sessions => 0% win rate.
+        await SetPointsAsync(rookie.UserId, 50);
+
+        var response = await TestApi.GetAsync(sharp, "/api/players/leaderboard");
+        await TestApi.EnsureStatusAsync(response, HttpStatusCode.OK);
+        var board = await TestApi.ReadAsAsync<List<LeaderboardEntryResponseDto>>(response);
+
+        var sharpEntry = board.Single(entry => entry.UserId == sharp.UserId);
+        var steadyEntry = board.Single(entry => entry.UserId == steady.UserId);
+        var rookieEntry = board.Single(entry => entry.UserId == rookie.UserId);
+
+        Assert.Equal(10, sharpEntry.TotalGamesPlayed);
+        Assert.Equal(9, sharpEntry.TotalGamesWon);
+        Assert.Equal(0.9m, sharpEntry.WinRate);
+        Assert.Equal(40, sharpEntry.TotalBallsPotted);
+        Assert.Equal(1, sharpEntry.TotalSessions);
+
+        Assert.Equal(0.5m, steadyEntry.WinRate);
+        Assert.Equal(0m, rookieEntry.WinRate);
+        Assert.Equal(0, rookieEntry.TotalGamesPlayed);
+
+        // Highest win rate wins regardless of points; points only break win-rate ties.
+        Assert.True(board.IndexOf(sharpEntry) < board.IndexOf(steadyEntry));
+        Assert.True(board.IndexOf(steadyEntry) < board.IndexOf(rookieEntry));
     }
 
     [Fact]
@@ -83,6 +127,64 @@ public sealed class PlayersTests : IntegrationTestBase
             dbContext.PoolHalls.Add(hall);
             await dbContext.SaveChangesAsync();
             return hall.Id;
+        });
+    }
+
+    private async Task CreateReportedSessionAsync(
+        Guid userId,
+        Guid hallId,
+        int gamesWon,
+        int gamesLost,
+        int ballsPotted)
+    {
+        await Factory.ExecuteDbContextAsync(async dbContext =>
+        {
+            var session = new Session
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                PoolHallId = hallId,
+                IsActive = false,
+                StartedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-60),
+                EndedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10),
+                Report = new SessionReport
+                {
+                    SessionId = Guid.Empty,
+                    GamesWon = gamesWon,
+                    GamesLost = gamesLost,
+                    BallsPotted = ballsPotted,
+                    SnookersEscaped = 0,
+                    FlaggedForValidation = false,
+                    SubmittedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10)
+                }
+            };
+
+            session.Report!.SessionId = session.Id;
+
+            dbContext.Sessions.Add(session);
+            await dbContext.SaveChangesAsync();
+        });
+    }
+
+    private async Task SetPointsAsync(Guid userId, int points)
+    {
+        await Factory.ExecuteDbContextAsync(async dbContext =>
+        {
+            var profile = await dbContext.PlayerProfiles.SingleOrDefaultAsync(current => current.UserId == userId);
+
+            if (profile is null)
+            {
+                profile = new PlayerProfile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId
+                };
+
+                dbContext.PlayerProfiles.Add(profile);
+            }
+
+            profile.Points = points;
+            await dbContext.SaveChangesAsync();
         });
     }
 }

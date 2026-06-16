@@ -103,6 +103,20 @@ internal sealed record PlayerListItemResponseDto(
     string? Title
 );
 
+internal sealed record LeaderboardEntryResponseDto(
+    Guid UserId,
+    string DisplayName,
+    string AvatarColorHex,
+    int Points,
+    int TotalGamesPlayed,
+    int TotalGamesWon,
+    int TotalGamesLost,
+    decimal WinRate,
+    int TotalBallsPotted,
+    int TotalSessions,
+    string? Title
+);
+
 internal sealed record CueItemResponseDto(
     Guid Id,
     string Name,

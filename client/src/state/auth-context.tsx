@@ -6,10 +6,12 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { authApi } from '../api/auth-api'
 import { notificationsApi } from '../api/notifications-api'
 import { ApiError } from '../lib/http'
 import {
+  addPushNavigationListener,
   removePushRegistration,
   requestPushRegistration,
 } from '../lib/push'
@@ -23,10 +25,46 @@ import {
 } from './auth-store'
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const navigate = useNavigate()
   const [state, setState] = useState<StoredAuthState | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
   const stateRef = useRef<StoredAuthState | null>(null)
   const pushStateRef = useRef<StoredPushState | null>(readStoredPushState())
+  const navigateRef = useRef(navigate)
+  const isInitializingRef = useRef(isInitializing)
+  const pendingRouteRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    navigateRef.current = navigate
+  }, [navigate])
+
+  useEffect(() => {
+    isInitializingRef.current = isInitializing
+  }, [isInitializing])
+
+  // Routes a push tap to the in-app router. When the app is still booting or the
+  // user is not authenticated yet (cold start), the route is queued and replayed
+  // once auth state is ready.
+  const handleDeepLink = useCallback((route: string) => {
+    if (isInitializingRef.current || stateRef.current === null) {
+      pendingRouteRef.current = route
+      return
+    }
+
+    navigateRef.current(route)
+  }, [])
+
+  useEffect(() => {
+    if (isInitializing || state === null) {
+      return
+    }
+
+    const pending = pendingRouteRef.current
+    if (pending) {
+      pendingRouteRef.current = null
+      navigateRef.current(pending)
+    }
+  }, [isInitializing, state])
 
   useEffect(() => {
     if (pushStateRef.current) {
@@ -158,6 +196,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const existing = pushStateRef.current
 
       if (existing) {
+        // Token already provisioned on a prior launch: requestPushRegistration is
+        // skipped, so attach the deep-link listener here and re-sync the token.
+        await addPushNavigationListener(handleDeepLink)
+
         try {
           await notificationsApi.registerDevice(accessToken, existing)
         } catch {
@@ -168,7 +210,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const registration = await requestPushRegistration()
+        const registration = await requestPushRegistration(undefined, handleDeepLink)
         if (!registration || isCanceled) {
           return
         }
@@ -187,7 +229,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => {
       isCanceled = true
     }
-  }, [state?.accessToken, writePushState])
+  }, [state?.accessToken, writePushState, handleDeepLink])
 
   const getValidAccessToken = useCallback(async (): Promise<string | null> => {
     if (!state) {

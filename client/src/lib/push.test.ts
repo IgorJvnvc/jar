@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  addPushNavigationListener,
   isPushAvailable,
   pushForegroundEventName,
   removePushRegistration,
@@ -199,6 +200,45 @@ describe('push', () => {
     })
 
     expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('addPushNavigationListener routes valid push action taps', async () => {
+    const onNavigate = vi.fn()
+    await addPushNavigationListener(onNavigate)
+
+    emitListener('pushNotificationActionPerformed', {
+      notification: {
+        data: {
+          route: '/leaderboard',
+        },
+      },
+    })
+
+    expect(onNavigate).toHaveBeenCalledWith('/leaderboard')
+  })
+
+  it('addPushNavigationListener ignores invalid routes', async () => {
+    const onNavigate = vi.fn()
+    await addPushNavigationListener(onNavigate)
+
+    emitListener('pushNotificationActionPerformed', {
+      notification: {
+        data: {
+          route: 'leaderboard',
+        },
+      },
+    })
+
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('addPushNavigationListener is a no-op on non-native', async () => {
+    state.isNative = false
+    const onNavigate = vi.fn()
+
+    await addPushNavigationListener(onNavigate)
+
+    expect(state.listeners.get('pushNotificationActionPerformed')).toBeUndefined()
   })
 
   it('removePushRegistration cleans up listeners and delivered notifications on native', async () => {
