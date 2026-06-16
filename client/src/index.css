@@ -973,6 +973,13 @@ select {
   color: #fff;
 }
 
+.page-header__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
 .leaderboard-list {
   list-style: none;
   margin: 0;

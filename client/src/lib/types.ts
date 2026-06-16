@@ -28,6 +28,10 @@ export type ProfileResponse = {
   accuracy: number
   cueControl: number
   spin: number
+  duelsWon: number
+  duelsLost: number
+  gamesWon: number
+  gamesLost: number
   updatedAtUtc: string
 }
 
@@ -122,6 +126,18 @@ export type LeaderboardEntryResponse = {
   winRate: number
   totalBallsPotted: number
   totalSessions: number
+  title: string | null
+}
+
+export type DuelLeaderboardEntryResponse = {
+  userId: Guid
+  displayName: string
+  avatarColorHex: string
+  duelsWon: number
+  duelsLost: number
+  duelsPlayed: number
+  winRate: number
+  points: number
   title: string | null
 }
 

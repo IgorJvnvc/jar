@@ -148,8 +148,13 @@ public sealed class PointsLedgerService : IPointsLedgerService
 
     public async Task<PlayerProfile> GetOrCreateProfileAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var profile = await dbContext.PlayerProfiles
-            .SingleOrDefaultAsync(current => current.UserId == userId, cancellationToken);
+        // Check the change tracker first so repeated calls within a single unit of work
+        // (e.g. crediting a winner and debiting a loser before SaveChanges) reuse the same
+        // pending profile instead of attempting a second insert against the unique UserId index.
+        var profile = dbContext.PlayerProfiles.Local
+            .FirstOrDefault(current => current.UserId == userId)
+            ?? await dbContext.PlayerProfiles
+                .SingleOrDefaultAsync(current => current.UserId == userId, cancellationToken);
 
         if (profile is not null)
         {

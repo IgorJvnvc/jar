@@ -133,6 +133,57 @@ public sealed class PlayersController : ControllerBase
         return Ok(leaderboard);
     }
 
+    [HttpGet("duel-leaderboard")]
+    public async Task<ActionResult<IReadOnlyList<DuelLeaderboardEntryResponse>>> GetDuelLeaderboard(CancellationToken cancellationToken)
+    {
+        // Join users with their profile duel tallies in memory so the win-rate ordering below
+        // stays consistent across the SQLite test provider and PostgreSQL.
+        var players = await (
+            from user in dbContext.Users.AsNoTracking()
+            join profile in dbContext.PlayerProfiles.AsNoTracking()
+                on user.Id equals profile.UserId into profiles
+            from profile in profiles.DefaultIfEmpty()
+            select new
+            {
+                user.Id,
+                user.DisplayName,
+                AvatarColorHex = profile != null ? profile.AvatarColorHex : "#1d7a59",
+                Points = profile != null ? profile.Points : 0,
+                Title = profile != null ? profile.Title : null,
+                DuelsWon = profile != null ? profile.DuelsWon : 0,
+                DuelsLost = profile != null ? profile.DuelsLost : 0
+            })
+            .ToListAsync(cancellationToken);
+
+        var duelLeaderboard = players
+            .Select(player =>
+            {
+                var duelsPlayed = player.DuelsWon + player.DuelsLost;
+                var winRate = duelsPlayed > 0
+                    ? Math.Round((decimal)player.DuelsWon / duelsPlayed, 4)
+                    : 0m;
+
+                return new DuelLeaderboardEntryResponse(
+                    player.Id,
+                    player.DisplayName,
+                    player.AvatarColorHex,
+                    player.DuelsWon,
+                    player.DuelsLost,
+                    duelsPlayed,
+                    winRate,
+                    player.Points,
+                    player.Title);
+            })
+            .Where(entry => entry.DuelsPlayed > 0)
+            .OrderByDescending(entry => entry.WinRate)
+            .ThenByDescending(entry => entry.DuelsWon)
+            .ThenByDescending(entry => entry.Points)
+            .ThenBy(entry => entry.DisplayName)
+            .ToList();
+
+        return Ok(duelLeaderboard);
+    }
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PlayerListItemResponse>>> GetPlayers(CancellationToken cancellationToken)
     {

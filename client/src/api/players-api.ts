@@ -1,6 +1,7 @@
 import { request } from '../lib/http'
 import type {
   ActiveSessionPlayerResponse,
+  DuelLeaderboardEntryResponse,
   LeaderboardEntryResponse,
   PlayerListItemResponse,
 } from '../lib/types'
@@ -20,6 +21,12 @@ export const playersApi = {
 
   leaderboard(accessToken: string): Promise<LeaderboardEntryResponse[]> {
     return request<LeaderboardEntryResponse[]>('/api/players/leaderboard', {
+      accessToken,
+    })
+  },
+
+  duelLeaderboard(accessToken: string): Promise<DuelLeaderboardEntryResponse[]> {
+    return request<DuelLeaderboardEntryResponse[]>('/api/players/duel-leaderboard', {
       accessToken,
     })
   },

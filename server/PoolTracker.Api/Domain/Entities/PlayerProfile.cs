@@ -26,6 +26,10 @@ public sealed class PlayerProfile
 
     public decimal Spin { get; set; } = 50;
 
+    public int DuelsWon { get; set; }
+
+    public int DuelsLost { get; set; }
+
     public DateTimeOffset UpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
     public ApplicationUser User { get; set; } = null!;

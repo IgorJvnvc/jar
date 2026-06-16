@@ -26,6 +26,10 @@ internal sealed record ProfileResponseDto(
     decimal Accuracy,
     decimal CueControl,
     decimal Spin,
+    int DuelsWon,
+    int DuelsLost,
+    int GamesWon,
+    int GamesLost,
     DateTimeOffset UpdatedAtUtc
 );
 
@@ -114,6 +118,18 @@ internal sealed record LeaderboardEntryResponseDto(
     decimal WinRate,
     int TotalBallsPotted,
     int TotalSessions,
+    string? Title
+);
+
+internal sealed record DuelLeaderboardEntryResponseDto(
+    Guid UserId,
+    string DisplayName,
+    string AvatarColorHex,
+    int DuelsWon,
+    int DuelsLost,
+    int DuelsPlayed,
+    decimal WinRate,
+    int Points,
     string? Title
 );
 

@@ -70,6 +70,37 @@ public sealed class PlayersTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task GetDuelLeaderboard_RanksByWinRate_AndExcludesPlayersWithoutDuels()
+    {
+        var sharp = await RegisterAndLoginAsync("DuelLeaderSharp");
+        var steady = await RegisterAndLoginAsync("DuelLeaderSteady");
+        var rookie = await RegisterAndLoginAsync("DuelLeaderRookie");
+
+        // Sharp: 9 wins / 1 loss => 90% win rate, fewer points.
+        await SetDuelRecordAsync(sharp.UserId, duelsWon: 9, duelsLost: 1, points: 300);
+        // Steady: 5 wins / 5 losses => 50% win rate, highest points.
+        await SetDuelRecordAsync(steady.UserId, duelsWon: 5, duelsLost: 5, points: 900);
+        // Rookie: no duels at all => excluded from the duel board entirely.
+        await SetDuelRecordAsync(rookie.UserId, duelsWon: 0, duelsLost: 0, points: 50);
+
+        var response = await TestApi.GetAsync(sharp, "/api/players/duel-leaderboard");
+        await TestApi.EnsureStatusAsync(response, HttpStatusCode.OK);
+        var board = await TestApi.ReadAsAsync<List<DuelLeaderboardEntryResponseDto>>(response);
+
+        var sharpEntry = board.Single(entry => entry.UserId == sharp.UserId);
+        var steadyEntry = board.Single(entry => entry.UserId == steady.UserId);
+
+        Assert.Equal(10, sharpEntry.DuelsPlayed);
+        Assert.Equal(9, sharpEntry.DuelsWon);
+        Assert.Equal(0.9m, sharpEntry.WinRate);
+        Assert.Equal(0.5m, steadyEntry.WinRate);
+
+        // Higher win rate ranks above more points; players without any duels never appear.
+        Assert.True(board.IndexOf(sharpEntry) < board.IndexOf(steadyEntry));
+        Assert.DoesNotContain(board, entry => entry.UserId == rookie.UserId);
+    }
+
+    [Fact]
     public async Task ActiveSessions_ReturnsOnlyActivePlayers()
     {
         var activePlayer = await RegisterAndLoginAsync("ActivePlayer");
@@ -183,6 +214,30 @@ public sealed class PlayersTests : IntegrationTestBase
                 dbContext.PlayerProfiles.Add(profile);
             }
 
+            profile.Points = points;
+            await dbContext.SaveChangesAsync();
+        });
+    }
+
+    private async Task SetDuelRecordAsync(Guid userId, int duelsWon, int duelsLost, int points)
+    {
+        await Factory.ExecuteDbContextAsync(async dbContext =>
+        {
+            var profile = await dbContext.PlayerProfiles.SingleOrDefaultAsync(current => current.UserId == userId);
+
+            if (profile is null)
+            {
+                profile = new PlayerProfile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId
+                };
+
+                dbContext.PlayerProfiles.Add(profile);
+            }
+
+            profile.DuelsWon = duelsWon;
+            profile.DuelsLost = duelsLost;
             profile.Points = points;
             await dbContext.SaveChangesAsync();
         });

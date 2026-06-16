@@ -443,6 +443,12 @@ public sealed class DuelsController : ControllerBase
             duel.Id,
             cancellationToken);
 
+        var winnerProfile = await pointsLedger.GetOrCreateProfileAsync(winnerUserId, cancellationToken);
+        winnerProfile.DuelsWon++;
+
+        var loserProfile = await pointsLedger.GetOrCreateProfileAsync(loserUserId, cancellationToken);
+        loserProfile.DuelsLost++;
+
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 

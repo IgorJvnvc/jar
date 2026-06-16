@@ -26,6 +26,75 @@ public sealed class ProfileTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task GetProfile_IncludesDuelAndGeneralRecords()
+    {
+        var session = await RegisterAndLoginAsync("ProfileRecords");
+
+        await Factory.ExecuteDbContextAsync(async dbContext =>
+        {
+            var hall = new PoolHall
+            {
+                Id = Guid.NewGuid(),
+                Name = "Records Hall",
+                Address = "Records Street",
+                Latitude = 44.81,
+                Longitude = 20.42,
+                TotalTables = 6,
+                AddedByUserId = session.UserId
+            };
+
+            dbContext.PoolHalls.Add(hall);
+
+            dbContext.PlayerProfiles.Add(new PlayerProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = session.UserId,
+                DuelsWon = 4,
+                DuelsLost = 1,
+                AvatarColorHex = "#1d7a59",
+                Power = 50,
+                Accuracy = 50,
+                CueControl = 50,
+                Spin = 50
+            });
+
+            var played = new Session
+            {
+                Id = Guid.NewGuid(),
+                UserId = session.UserId,
+                PoolHallId = hall.Id,
+                IsActive = false,
+                StartedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-60),
+                EndedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10),
+                Report = new SessionReport
+                {
+                    SessionId = Guid.Empty,
+                    GamesWon = 7,
+                    GamesLost = 3,
+                    BallsPotted = 20,
+                    SnookersEscaped = 0,
+                    FlaggedForValidation = false,
+                    SubmittedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10)
+                }
+            };
+
+            played.Report!.SessionId = played.Id;
+            dbContext.Sessions.Add(played);
+
+            await dbContext.SaveChangesAsync();
+        });
+
+        var response = await TestApi.GetAsync(session, "/api/profile/me");
+        await TestApi.EnsureStatusAsync(response, HttpStatusCode.OK);
+        var profile = await TestApi.ReadAsAsync<ProfileResponseDto>(response);
+
+        Assert.Equal(4, profile.DuelsWon);
+        Assert.Equal(1, profile.DuelsLost);
+        Assert.Equal(7, profile.GamesWon);
+        Assert.Equal(3, profile.GamesLost);
+    }
+
+    [Fact]
     public async Task UpdateProfile_PersistsUserAndStats()
     {
         var session = await RegisterAndLoginAsync("ProfileUpdate");

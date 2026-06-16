@@ -250,6 +250,58 @@ public sealed class DuelsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task SubmitResult_WhenBothAgree_RecordsDuelWinAndLoss()
+    {
+        var winner = await RegisterAndLoginAsync("DuelRecordWinner");
+        var loser = await RegisterAndLoginAsync("DuelRecordLoser");
+        await SeedProfileAsync(winner.UserId, points: 100, debt: 0, title: null);
+        await SeedProfileAsync(loser.UserId, points: 100, debt: 0, title: null);
+
+        var duel = await CreateAndAcceptDuelAsync(winner, loser);
+
+        await TestApi.EnsureStatusAsync(await TestApi.PostAsync(winner, $"/api/duels/{duel.Id}/submit-result", new { choice = "Won" }), HttpStatusCode.OK);
+        await TestApi.EnsureStatusAsync(await TestApi.PostAsync(loser, $"/api/duels/{duel.Id}/submit-result", new { choice = "Lost" }), HttpStatusCode.OK);
+
+        var winnerProfile = await GetProfileAsync(winner);
+        var loserProfile = await GetProfileAsync(loser);
+
+        Assert.Equal(1, winnerProfile.DuelsWon);
+        Assert.Equal(0, winnerProfile.DuelsLost);
+        Assert.Equal(0, loserProfile.DuelsWon);
+        Assert.Equal(1, loserProfile.DuelsLost);
+    }
+
+    [Fact]
+    public async Task CoinFlip_ResolvesDuel_RecordsDuelWinAndLoss()
+    {
+        var challenger = await RegisterAndLoginAsync("CoinRecordA");
+        var opponent = await RegisterAndLoginAsync("CoinRecordB");
+        await SeedProfileAsync(challenger.UserId, points: 100, debt: 0, title: null);
+        await SeedProfileAsync(opponent.UserId, points: 100, debt: 0, title: null);
+
+        var duel = await StartCoinFlipStateAsync(challenger, opponent);
+
+        await TestApi.EnsureStatusAsync(await TestApi.PostAsync(challenger, $"/api/duels/{duel.Id}/coin-flip/choose", new { side = "Heads" }), HttpStatusCode.OK);
+        var secondPick = await TestApi.PostAsync(opponent, $"/api/duels/{duel.Id}/coin-flip/choose", new { side = "Tails" });
+        await TestApi.EnsureStatusAsync(secondPick, HttpStatusCode.OK);
+        var completed = await TestApi.ReadAsAsync<DuelStatusResponseDto>(secondPick);
+
+        Assert.Equal("Completed", completed.Status);
+        Assert.NotNull(completed.WinnerUserId);
+
+        var winnerSession = completed.WinnerUserId!.Value == challenger.UserId ? challenger : opponent;
+        var loserSession = completed.WinnerUserId!.Value == challenger.UserId ? opponent : challenger;
+
+        var winnerProfile = await GetProfileAsync(winnerSession);
+        var loserProfile = await GetProfileAsync(loserSession);
+
+        Assert.Equal(1, winnerProfile.DuelsWon);
+        Assert.Equal(0, winnerProfile.DuelsLost);
+        Assert.Equal(0, loserProfile.DuelsWon);
+        Assert.Equal(1, loserProfile.DuelsLost);
+    }
+
+    [Fact]
     public async Task DuelLoss_WhenInsufficientPoints_CreatesDebtAndAppliesTitle()
     {
         var winner = await RegisterAndLoginAsync("DebtWinner");

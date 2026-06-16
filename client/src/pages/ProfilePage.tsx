@@ -129,6 +129,21 @@ export function ProfilePage() {
             </Card>
           </div>
 
+          <div className="identity-row">
+            <Card title="Duel Record" subtitle="Wins vs losses in duels">
+              <div className="metric-value">
+                {profile.duelsWon}-{profile.duelsLost}
+              </div>
+              <div className="metric-chip">{winRateLabel(profile.duelsWon, profile.duelsLost)}</div>
+            </Card>
+            <Card title="General Record" subtitle="Games across all sessions">
+              <div className="metric-value">
+                {profile.gamesWon}-{profile.gamesLost}
+              </div>
+              <div className="metric-chip">{winRateLabel(profile.gamesWon, profile.gamesLost)}</div>
+            </Card>
+          </div>
+
           <div className="two-column">
             <Card title="Avatar Placeholder" subtitle="Temporary until final style is chosen">
             <div className="avatar-editor-preview">
@@ -252,6 +267,16 @@ type StatInputProps = {
   label: string
   value: number
   onChange: (value: number) => void
+}
+
+function winRateLabel(won: number, lost: number): string {
+  const played = won + lost
+
+  if (played === 0) {
+    return 'No record yet'
+  }
+
+  return `${Math.round((won / played) * 100)}% win rate`
 }
 
 function StatInput({ label, value, onChange }: StatInputProps) {

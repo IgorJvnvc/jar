@@ -13,5 +13,9 @@ public sealed record ProfileResponse(
     decimal Accuracy,
     decimal CueControl,
     decimal Spin,
+    int DuelsWon,
+    int DuelsLost,
+    int GamesWon,
+    int GamesLost,
     DateTimeOffset UpdatedAtUtc
 );
