@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { profileApi } from '../api/profile-api'
+import { shopApi } from '../api/shop-api'
 import { AvatarChip } from '../components/ui/AvatarChip'
 import { Card } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
 import { useAuthenticatedRequest } from '../hooks/use-authenticated-request'
 import { avatarPalette } from '../lib/palette'
-import type { ProfileResponse, UpdateProfileRequest } from '../lib/types'
+import type { CueItemResponse, ProfileResponse, UpdateProfileRequest } from '../lib/types'
 
 type ProfileFormState = UpdateProfileRequest
 
@@ -14,6 +15,7 @@ export function ProfilePage() {
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
   const [form, setForm] = useState<ProfileFormState | null>(null)
+  const [equippedCue, setEquippedCue] = useState<CueItemResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -27,13 +29,21 @@ export function ProfilePage() {
       setError(null)
 
       try {
-        const next = await authenticatedRequest((accessToken) => profileApi.getMine(accessToken))
+        const { next, cues } = await authenticatedRequest(async (accessToken) => {
+          const [next, cues] = await Promise.all([
+            profileApi.getMine(accessToken),
+            shopApi.listCues(accessToken),
+          ])
+
+          return { next, cues }
+        })
 
         if (!active) {
           return
         }
 
         setProfile(next)
+        setEquippedCue(cues.find((cue) => cue.isEquipped) ?? null)
         setForm({
           displayName: next.displayName,
           avatarColorHex: next.avatarColorHex,
@@ -103,8 +113,24 @@ export function ProfilePage() {
       {feedback ? <p className="state-text state-text--success">{feedback}</p> : null}
 
       {profile && form ? (
-        <div className="two-column">
-          <Card title="Avatar Placeholder" subtitle="Temporary until final style is chosen">
+        <>
+          <div className="identity-row">
+            <Card title="Crew Points" subtitle="Spend in the cue shop">
+              <div className="metric-value">{profile.points}</div>
+            </Card>
+            <Card title="Debt" subtitle="Owed from lost duels">
+              <div className="metric-value">{profile.debtPoints}</div>
+            </Card>
+            <Card title="Title" subtitle="Earned distinction">
+              <div className="metric-chip">{profile.title ?? 'No active title'}</div>
+            </Card>
+            <Card title="Equipped Cue" subtitle="Active loadout">
+              <div className="metric-chip">{equippedCue?.name ?? 'Default Cue'}</div>
+            </Card>
+          </div>
+
+          <div className="two-column">
+            <Card title="Avatar Placeholder" subtitle="Temporary until final style is chosen">
             <div className="avatar-editor-preview">
               <AvatarChip
                 displayName={form.displayName}
@@ -215,7 +241,8 @@ export function ProfilePage() {
               {isSubmitting ? 'Saving...' : 'Save Profile'}
             </button>
           </Card>
-        </div>
+          </div>
+        </>
       ) : null}
     </div>
   )

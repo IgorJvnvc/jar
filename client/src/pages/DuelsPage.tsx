@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { duelsApi } from '../api/duels-api'
 import { playersApi } from '../api/players-api'
 import { profileApi } from '../api/profile-api'
@@ -17,6 +17,16 @@ import type {
 import { useAuth } from '../state/use-auth'
 import { useNotifications } from '../state/use-notifications'
 
+type DuelHistoryFilter = 'active' | 'completed' | 'all'
+
+const DUEL_FILTERS: ReadonlyArray<{ value: DuelHistoryFilter; label: string }> = [
+  { value: 'active', label: 'Active' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'all', label: 'All' },
+]
+
+const FALLBACK_AVATAR_COLOR = '#3a4a63'
+
 export function DuelsPage() {
   const authenticatedRequest = useAuthenticatedRequest()
   const { user } = useAuth()
@@ -32,6 +42,7 @@ export function DuelsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [historyFilter, setHistoryFilter] = useState<DuelHistoryFilter>('active')
 
   const duelsWithRealtime = useMemo(() => {
     if (!latestDuelEvent) {
@@ -49,6 +60,27 @@ export function DuelsPage() {
 
     return duelsWithRealtime[0] ?? null
   }, [duelsWithRealtime, selectedDuelId])
+
+  const visibleDuels = useMemo(() => {
+    if (historyFilter === 'all') {
+      return duelsWithRealtime
+    }
+
+    return duelsWithRealtime.filter((duel) =>
+      historyFilter === 'completed' ? isTerminalStatus(duel.status) : !isTerminalStatus(duel.status),
+    )
+  }, [duelsWithRealtime, historyFilter])
+
+  const colorById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const item of players) {
+      map.set(item.userId, item.avatarColorHex)
+    }
+    if (profile) {
+      map.set(profile.userId, profile.avatarColorHex)
+    }
+    return map
+  }, [players, profile])
 
   useEffect(() => {
     let active = true
@@ -301,11 +333,32 @@ export function DuelsPage() {
 
           <hr className="section-divider" />
 
+          <div className="segmented" role="tablist" aria-label="Filter duels">
+            {DUEL_FILTERS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="tab"
+                aria-selected={historyFilter === option.value}
+                className={
+                  historyFilter === option.value
+                    ? 'segmented__option segmented__option--active'
+                    : 'segmented__option'
+                }
+                onClick={() => setHistoryFilter(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
           {duelsWithRealtime.length === 0 ? (
             <p className="state-text duel-empty">No duels yet.</p>
+          ) : visibleDuels.length === 0 ? (
+            <p className="state-text duel-empty">No {historyFilter} duels.</p>
           ) : (
             <ul className="stack-list">
-              {duelsWithRealtime.map((duel) => {
+              {visibleDuels.map((duel) => {
                 const opponentName = duel.challengerId === user?.id
                   ? duel.opponentDisplayName
                   : duel.challengerDisplayName
@@ -337,7 +390,8 @@ export function DuelsPage() {
         <Card title="Selected Duel" subtitle="Resolve the duel flow from this panel.">
           {selectedDuel ? (
             <div className="duel-action-grid">
-              <DuelParticipants duel={selectedDuel} currentUserId={user?.id ?? ''} />
+              <DuelParticipants duel={selectedDuel} currentUserId={user?.id ?? ''} colorById={colorById} />
+              <DuelOutcomeBanner duel={selectedDuel} currentUserId={user?.id ?? ''} />
 
               <div className="button-row">
                 {canRespond(selectedDuel, user?.id) ? (
@@ -404,7 +458,7 @@ export function DuelsPage() {
                 ) : null}
               </div>
 
-              <CoinFlipPanel duel={selectedDuel} isCoinFlipping={Boolean(selectedDuel.coinFlip?.resultSide)} />
+              <CoinFlipPanel key={selectedDuel.id} duel={selectedDuel} />
 
               <small className="state-text">
                 Round {selectedDuel.currentRound} • My choice: {selectedDuel.myLatestChoice ?? 'none'} • Opponent:
@@ -424,22 +478,27 @@ export function DuelsPage() {
 type DuelParticipantsProps = {
   duel: DuelStatusResponse
   currentUserId: string
+  colorById: Map<string, string>
 }
 
-function DuelParticipants({ duel, currentUserId }: DuelParticipantsProps) {
+function DuelParticipants({ duel, currentUserId, colorById }: DuelParticipantsProps) {
   const challengerIsMe = duel.challengerId === currentUserId
+  const myId = challengerIsMe ? duel.challengerId : duel.opponentId
+  const theirId = challengerIsMe ? duel.opponentId : duel.challengerId
   const myName = challengerIsMe ? duel.challengerDisplayName : duel.opponentDisplayName
   const theirName = challengerIsMe ? duel.opponentDisplayName : duel.challengerDisplayName
+  const myColor = colorById.get(myId) ?? FALLBACK_AVATAR_COLOR
+  const theirColor = colorById.get(theirId) ?? FALLBACK_AVATAR_COLOR
 
   return (
     <div className="duel-players-row">
       <div>
-        <AvatarChip displayName={myName} colorHex="#1d7a59" size="sm" />
+        <AvatarChip displayName={myName} colorHex={myColor} size="sm" />
         <strong>{myName}</strong>
       </div>
       <span>vs</span>
       <div>
-        <AvatarChip displayName={theirName} colorHex="#334a90" size="sm" />
+        <AvatarChip displayName={theirName} colorHex={theirColor} size="sm" />
         <strong>{theirName}</strong>
       </div>
       <StatusPill status={duel.status} />
@@ -447,32 +506,90 @@ function DuelParticipants({ duel, currentUserId }: DuelParticipantsProps) {
   )
 }
 
-type CoinFlipPanelProps = {
+type DuelOutcomeBannerProps = {
   duel: DuelStatusResponse
-  isCoinFlipping: boolean
+  currentUserId: string
 }
 
-function CoinFlipPanel({ duel, isCoinFlipping }: CoinFlipPanelProps) {
-  if (!duel.coinFlip) {
+function DuelOutcomeBanner({ duel, currentUserId }: DuelOutcomeBannerProps) {
+  if (duel.status !== 'Completed' || !duel.winnerUserId) {
     return null
   }
 
-  const resultLabel = duel.coinFlip.resultSide ?? 'Pending'
+  const didWin = duel.winnerUserId === currentUserId
+
+  return (
+    <div
+      className={didWin ? 'duel-outcome duel-outcome--win' : 'duel-outcome duel-outcome--loss'}
+      role="status"
+    >
+      <span className="duel-outcome__label">{didWin ? 'Victory' : 'Defeat'}</span>
+      <span className="duel-outcome__points">
+        {didWin ? '+' : '-'}
+        {duel.pointsWager} pts
+      </span>
+    </div>
+  )
+}
+
+type CoinFlipPanelProps = {
+  duel: DuelStatusResponse
+}
+
+type CoinPhase = 'idle' | 'flipping' | 'revealed'
+
+function CoinFlipPanel({ duel }: CoinFlipPanelProps) {
+  const coinFlip = duel.coinFlip
+  const resultSide = coinFlip?.resultSide ?? null
+
+  const [phase, setPhase] = useState<CoinPhase>(resultSide ? 'revealed' : 'idle')
+  const previousResultRef = useRef<CoinSide | null>(resultSide)
+
+  useEffect(() => {
+    const previous = previousResultRef.current
+    previousResultRef.current = resultSide
+
+    if (resultSide && !previous) {
+      setPhase('flipping')
+      const timer = window.setTimeout(() => setPhase('revealed'), 1500)
+      return () => window.clearTimeout(timer)
+    }
+
+    setPhase(resultSide ? 'revealed' : 'idle')
+    return undefined
+  }, [resultSide])
+
+  if (!coinFlip) {
+    return null
+  }
+
+  const faceLabel = resultSide ?? '?'
+  const coinClassName =
+    phase === 'flipping'
+      ? 'coin-anim coin-anim--flipping'
+      : phase === 'revealed'
+        ? 'coin-anim coin-anim--revealed'
+        : 'coin-anim'
+
+  const statusLine =
+    phase === 'revealed' && resultSide
+      ? `Landed on ${resultSide}.`
+      : phase === 'flipping'
+        ? 'Flipping...'
+        : 'Waiting for both players to pick a side.'
 
   return (
     <div className="coin-flip-card">
       <strong>Coin Flip</strong>
       <small className="state-text">
-        First chooser: {duel.challengerDisplayName} • Second chooser: {duel.coinFlip.secondChooserUserId ? 'Assigned' : 'Waiting'}
+        P1: {coinFlip.firstChooserSide ?? '-'} • P2: {coinFlip.secondChooserSide ?? '-'}
       </small>
       <div className="coin-anim-wrap">
-        <div className={isCoinFlipping ? 'coin-anim coin-anim--spinning' : 'coin-anim'}>
-          {resultLabel}
+        <div className={coinClassName} aria-live="polite">
+          {faceLabel}
         </div>
       </div>
-      <small className="state-text">
-        P1: {duel.coinFlip.firstChooserSide ?? '-'} • P2: {duel.coinFlip.secondChooserSide ?? '-'}
-      </small>
+      <small className="state-text">{statusLine}</small>
     </div>
   )
 }
@@ -509,6 +626,10 @@ function canChooseCoinSide(duel: DuelStatusResponse): boolean {
   }
 
   return duel.coinFlip.isWaitingForFirstChooser || duel.coinFlip.isWaitingForSecondChooser
+}
+
+function isTerminalStatus(status: DuelStatusResponse['status']): boolean {
+  return status === 'Completed' || status === 'Declined' || status === 'Expired'
 }
 
 function sortDuels(items: DuelStatusResponse[]): DuelStatusResponse[] {

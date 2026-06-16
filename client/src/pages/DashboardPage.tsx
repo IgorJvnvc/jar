@@ -3,6 +3,7 @@ import { hallsApi } from '../api/halls-api'
 import { playersApi } from '../api/players-api'
 import { profileApi } from '../api/profile-api'
 import { sessionsApi } from '../api/sessions-api'
+import { shopApi } from '../api/shop-api'
 import { Card } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
 import { AvatarChip } from '../components/ui/AvatarChip'
@@ -10,6 +11,7 @@ import { formatDateTime, formatDurationFrom } from '../lib/date'
 import { useAuthenticatedRequest } from '../hooks/use-authenticated-request'
 import type {
   ActiveSessionPlayerResponse,
+  CueItemResponse,
   PoolHallResponse,
   ProfileResponse,
   SessionResponse,
@@ -20,6 +22,7 @@ type DashboardData = {
   halls: PoolHallResponse[]
   activePlayers: ActiveSessionPlayerResponse[]
   recentSessions: SessionResponse[]
+  equippedCue: CueItemResponse | null
 }
 
 export function DashboardPage() {
@@ -38,14 +41,21 @@ export function DashboardPage() {
 
       try {
         const next = await authenticatedRequest(async (accessToken) => {
-          const [profile, halls, activePlayers, recentSessions] = await Promise.all([
+          const [profile, halls, activePlayers, recentSessions, cues] = await Promise.all([
             profileApi.getMine(accessToken),
             hallsApi.list(accessToken),
             playersApi.activeSessions(accessToken),
             sessionsApi.recent(accessToken),
+            shopApi.listCues(accessToken),
           ])
 
-          return { profile, halls, activePlayers, recentSessions }
+          return {
+            profile,
+            halls,
+            activePlayers,
+            recentSessions,
+            equippedCue: cues.find((cue) => cue.isEquipped) ?? null,
+          }
         })
 
         if (active) {
@@ -100,6 +110,18 @@ export function DashboardPage() {
 
             <Card title="Halls In Network" subtitle="User-discovered places">
               <div className="metric-value">{data.halls.length}</div>
+            </Card>
+          </div>
+
+          <div className="identity-row">
+            <Card title="Title" subtitle="Earned distinction">
+              <div className="metric-chip">{data.profile.title ?? 'No active title'}</div>
+            </Card>
+            <Card title="Debt" subtitle="Owed from lost duels">
+              <div className="metric-value">{data.profile.debtPoints}</div>
+            </Card>
+            <Card title="Equipped Cue" subtitle="Active loadout">
+              <div className="metric-chip">{data.equippedCue?.name ?? 'Default Cue'}</div>
             </Card>
           </div>
 
