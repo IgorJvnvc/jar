@@ -18,6 +18,9 @@ public sealed class GameLogEntry : IValidatableObject
     [EnumDataType(typeof(GameType))]
     public GameType GameType { get; init; }
 
+    [EnumDataType(typeof(BattleType))]
+    public BattleType BattleType { get; init; }
+
     public bool BrokeThisRack { get; init; }
 
     /// <summary>Balls potted on the break shot. Must be 0 when the player did not break.</summary>
@@ -38,6 +41,9 @@ public sealed class GameLogEntry : IValidatableObject
 
     public bool GoldenBreak { get; init; }
 
+    /// <summary>True when a 9-ball/10-ball train was potted this rack. Waives a negative accuracy result.</summary>
+    public bool PottedTrain { get; init; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!BrokeThisRack && BreakPots > 0)
@@ -52,6 +58,20 @@ public sealed class GameLogEntry : IValidatableObject
             yield return new ValidationResult(
                 "Snookers escaped cannot exceed snookers faced.",
                 new[] { nameof(SnookersEscaped) });
+        }
+
+        if (GameType == GameType.NineBall && BattleType != BattleType.OneVsOne)
+        {
+            yield return new ValidationResult(
+                "9-ball is singles only and cannot be a 2v2 battle.",
+                new[] { nameof(BattleType) });
+        }
+
+        if (PottedTrain && GameType == GameType.EightBall)
+        {
+            yield return new ValidationResult(
+                "A train can only be potted in 9-ball or 10-ball.",
+                new[] { nameof(PottedTrain) });
         }
 
         if (GoldenBreak && Won && !BrokeThisRack)

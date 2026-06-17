@@ -197,10 +197,13 @@ export type StartSessionRequest = {
   poolHallTableId: Guid | null
 }
 
-export type GameType = 'EightBall' | 'NineBall'
+export type GameType = 'EightBall' | 'NineBall' | 'TenBall'
+
+export type BattleType = 'OneVsOne' | 'TwoVsTwo'
 
 export type GameLogEntry = {
   gameType: GameType
+  battleType: BattleType
   brokeThisRack: boolean
   breakPots: number
   ballsPotted: number
@@ -208,6 +211,7 @@ export type GameLogEntry = {
   snookersEscaped: number
   won: boolean
   goldenBreak: boolean
+  pottedTrain: boolean
 }
 
 export type EndSessionRequest = {

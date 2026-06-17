@@ -49,21 +49,66 @@ public sealed class PlayerSkillCalculatorTests
     }
 
     [Theory]
-    [InlineData(0, -3.0)]
-    [InlineData(1, -2.0)]
-    [InlineData(2, -2.0)]
-    [InlineData(3, -1.0)]
-    [InlineData(4, -0.5)]
-    [InlineData(5, 0.5)]
-    [InlineData(9, 0.5)]
-    public void Calculate_Accuracy_UsesNonBreakPotsEveryGame(int pots, double expected)
+    // 8-ball singles: <3 -> -1, 3 -> 0, >3 -> +1
+    [InlineData(GameType.EightBall, BattleType.OneVsOne, 0, -1.0)]
+    [InlineData(GameType.EightBall, BattleType.OneVsOne, 2, -1.0)]
+    [InlineData(GameType.EightBall, BattleType.OneVsOne, 3, 0.0)]
+    [InlineData(GameType.EightBall, BattleType.OneVsOne, 4, 1.0)]
+    // 8-ball doubles: <3 -> -1, 3 -> 0, 4 -> +1, 5 -> +1.5, >=6 -> +2
+    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 2, -1.0)]
+    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 3, 0.0)]
+    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 4, 1.0)]
+    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 5, 1.5)]
+    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 6, 2.0)]
+    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 9, 2.0)]
+    // 9-ball singles only: <4 -> -2, 4 -> 0, >4 -> +1
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 3, -2.0)]
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 4, 0.0)]
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 5, 1.0)]
+    // 10-ball singles: <=4 -> -2, 5 -> 0, >5 -> +1
+    [InlineData(GameType.TenBall, BattleType.OneVsOne, 4, -2.0)]
+    [InlineData(GameType.TenBall, BattleType.OneVsOne, 5, 0.0)]
+    [InlineData(GameType.TenBall, BattleType.OneVsOne, 6, 1.0)]
+    // 10-ball doubles: <3 -> -1, 3 -> 0, 4 -> +1, >=5 -> +1.5
+    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 2, -1.0)]
+    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 3, 0.0)]
+    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 4, 1.0)]
+    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 5, 1.5)]
+    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 8, 1.5)]
+    public void Calculate_Accuracy_UsesPerModeTables(GameType gameType, BattleType battleType, int pots, double expected)
     {
         var result = calculator.Calculate(new[]
         {
-            Game(broke: false, ballsPotted: pots, won: true)
+            Game(broke: false, ballsPotted: pots, won: true, gameType: gameType, battleType: battleType)
         });
 
         Assert.Equal((decimal)expected, result.AccuracyDelta);
+    }
+
+    [Theory]
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 3)]   // would be -2 without the train
+    [InlineData(GameType.TenBall, BattleType.OneVsOne, 4)]    // would be -2 without the train
+    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 2)]    // would be -1 without the train
+    public void Calculate_Accuracy_TrainWaivesNegativeResult(GameType gameType, BattleType battleType, int pots)
+    {
+        var result = calculator.Calculate(new[]
+        {
+            Game(broke: false, ballsPotted: pots, won: true, gameType: gameType, battleType: battleType, pottedTrain: true)
+        });
+
+        Assert.Equal(0m, result.AccuracyDelta);
+    }
+
+    [Fact]
+    public void Calculate_Accuracy_TrainDoesNotReduceAPositiveResult()
+    {
+        var result = calculator.Calculate(new[]
+        {
+            // 9-ball with 5 pots is +1; potting the train must not pull it down to 0.
+            Game(broke: false, ballsPotted: 5, won: true, gameType: GameType.NineBall, pottedTrain: true)
+        });
+
+        Assert.Equal(1m, result.AccuracyDelta);
     }
 
     [Fact]
@@ -163,18 +208,22 @@ public sealed class PlayerSkillCalculatorTests
         int snookersEscaped = 0,
         bool won = false,
         bool goldenBreak = false,
-        GameType gameType = GameType.EightBall)
+        GameType gameType = GameType.EightBall,
+        BattleType battleType = BattleType.OneVsOne,
+        bool pottedTrain = false)
     {
         return new SessionGame
         {
             GameType = gameType,
+            BattleType = battleType,
             BrokeThisRack = broke,
             BreakPots = breakPots,
             BallsPotted = ballsPotted,
             SnookersFaced = snookersFaced,
             SnookersEscaped = snookersEscaped,
             Won = won,
-            GoldenBreak = goldenBreak
+            GoldenBreak = goldenBreak,
+            PottedTrain = pottedTrain
         };
     }
 }

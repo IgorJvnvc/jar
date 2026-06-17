@@ -127,4 +127,5 @@ Signed APK output path:
 - **Phase 2 (done)** — Player records and duel leaderboard.
 - **Phase 3 (done)** — Pool-day engine: background auto-stop/settlement, daily hall competition, retire manual stat editing.
 - **Phase 4a (done)** — Live per-game session tracking, per-session skill scoring (power/accuracy/cue control/spin), golden-break bonus, and cue-aware effective stats.
+- **Phase 4b (done)** — Battle types (1v1/2v2) and 10-ball support, with per-mode accuracy tables and a 9-/10-ball "train" that waives a low-pot accuracy penalty.
 - **Phase 4+ (planned)** — Levels/XP, achievements, and match simulation.

@@ -6,6 +6,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { useAuthenticatedRequest } from '../hooks/use-authenticated-request'
 import { formatDateTime, formatDurationFrom } from '../lib/date'
 import type {
+  BattleType,
   EndSessionRequest,
   GameLogEntry,
   GameType,
@@ -20,6 +21,26 @@ const LAST_GAME_TYPE_KEY = 'jar:last-game-type'
 const GAME_TYPE_LABELS: Record<GameType, string> = {
   EightBall: '8-Ball',
   NineBall: '9-Ball',
+  TenBall: '10-Ball',
+}
+
+const BATTLE_TYPE_LABELS: Record<BattleType, string> = {
+  OneVsOne: '1v1',
+  TwoVsTwo: '2v2',
+}
+
+// 9-ball is singles-only; 8-ball and 10-ball can be played as doubles.
+function supportsDoubles(gameType: GameType): boolean {
+  return gameType !== 'NineBall'
+}
+
+// A "train" only exists in 9-ball and 10-ball.
+function supportsTrain(gameType: GameType): boolean {
+  return gameType === 'NineBall' || gameType === 'TenBall'
+}
+
+function trainLabel(gameType: GameType): string {
+  return gameType === 'NineBall' ? '9-ball train' : '10-ball train'
 }
 
 function gamesStorageKey(sessionId: string): string {
@@ -27,7 +48,17 @@ function gamesStorageKey(sessionId: string): string {
 }
 
 function loadLastGameType(): GameType {
-  return localStorage.getItem(LAST_GAME_TYPE_KEY) === 'NineBall' ? 'NineBall' : 'EightBall'
+  const stored = localStorage.getItem(LAST_GAME_TYPE_KEY)
+  return stored === 'NineBall' || stored === 'TenBall' || stored === 'EightBall' ? stored : 'EightBall'
+}
+
+// Backfill fields added after a session may have started, so older stored drafts stay valid.
+function sanitizeStoredGame(entry: GameLogEntry): GameLogEntry {
+  return normalizeDraft({
+    ...entry,
+    battleType: entry.battleType ?? 'OneVsOne',
+    pottedTrain: entry.pottedTrain ?? false,
+  })
 }
 
 function readStoredGames(sessionId: string): GameLogEntry[] {
@@ -38,7 +69,7 @@ function readStoredGames(sessionId: string): GameLogEntry[] {
 
   try {
     const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as GameLogEntry[]) : []
+    return Array.isArray(parsed) ? (parsed as GameLogEntry[]).map(sanitizeStoredGame) : []
   } catch {
     return []
   }
@@ -47,6 +78,7 @@ function readStoredGames(sessionId: string): GameLogEntry[] {
 function emptyDraft(gameType: GameType): GameLogEntry {
   return {
     gameType,
+    battleType: 'OneVsOne',
     brokeThisRack: true,
     breakPots: 0,
     ballsPotted: 0,
@@ -54,6 +86,7 @@ function emptyDraft(gameType: GameType): GameLogEntry {
     snookersEscaped: 0,
     won: true,
     goldenBreak: false,
+    pottedTrain: false,
   }
 }
 
@@ -65,20 +98,29 @@ function isGoldenEligible(entry: GameLogEntry): boolean {
 function normalizeDraft(entry: GameLogEntry): GameLogEntry {
   return {
     ...entry,
+    // 9-ball is singles-only.
+    battleType: entry.gameType === 'NineBall' ? 'OneVsOne' : entry.battleType,
     breakPots: entry.brokeThisRack ? entry.breakPots : 0,
     snookersEscaped: Math.min(entry.snookersEscaped, entry.snookersFaced),
     goldenBreak: isGoldenEligible(entry) ? entry.goldenBreak : false,
+    // A train can only be potted in 9-ball / 10-ball.
+    pottedTrain: supportsTrain(entry.gameType) ? entry.pottedTrain : false,
   }
 }
 
 function describeGame(game: GameLogEntry): string {
   const parts: string[] = [
+    BATTLE_TYPE_LABELS[game.battleType],
     game.brokeThisRack ? `Broke (${game.breakPots} on break)` : 'Opponent broke',
     `${game.ballsPotted} potted`,
   ]
 
   if (game.snookersFaced > 0) {
     parts.push(`${game.snookersEscaped}/${game.snookersFaced} snookers escaped`)
+  }
+
+  if (game.pottedTrain) {
+    parts.push(trainLabel(game.gameType))
   }
 
   if (game.goldenBreak) {
@@ -407,11 +449,25 @@ function ActiveSessionPanel({ session, isSubmitting, onSubmit }: ActiveSessionPa
                 options={[
                   { value: 'EightBall', label: GAME_TYPE_LABELS.EightBall },
                   { value: 'NineBall', label: GAME_TYPE_LABELS.NineBall },
+                  { value: 'TenBall', label: GAME_TYPE_LABELS.TenBall },
                 ]}
                 value={draft.gameType}
                 onChange={(value) => updateDraft({ gameType: value })}
               />
             </ToggleField>
+
+            {supportsDoubles(draft.gameType) ? (
+              <ToggleField label="Battle">
+                <Segmented
+                  options={[
+                    { value: 'OneVsOne', label: BATTLE_TYPE_LABELS.OneVsOne },
+                    { value: 'TwoVsTwo', label: BATTLE_TYPE_LABELS.TwoVsTwo },
+                  ]}
+                  value={draft.battleType}
+                  onChange={(value) => updateDraft({ battleType: value })}
+                />
+              </ToggleField>
+            ) : null}
 
             <ToggleField label="Break">
               <Segmented
@@ -475,6 +531,17 @@ function ActiveSessionPanel({ session, isSubmitting, onSubmit }: ActiveSessionPa
                 {draft.brokeThisRack
                   ? 'Won on the break - golden break (+500 pts)'
                   : "Lost to opponent's golden break"}
+              </label>
+            ) : null}
+
+            {supportsTrain(draft.gameType) ? (
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={draft.pottedTrain}
+                  onChange={(event) => updateDraft({ pottedTrain: event.target.checked })}
+                />
+                {`${trainLabel(draft.gameType)} potted (waives a low-pot accuracy penalty)`}
               </label>
             ) : null}
 

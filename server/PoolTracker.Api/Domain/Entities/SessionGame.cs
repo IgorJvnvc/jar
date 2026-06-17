@@ -3,7 +3,19 @@ namespace PoolTracker.Api.Domain.Entities;
 public enum GameType
 {
     EightBall = 1,
-    NineBall = 2
+    NineBall = 2,
+    TenBall = 3
+}
+
+/// <summary>
+/// Whether the rack was a singles (1v1) or doubles (2v2) battle. Drives the accuracy
+/// scoring table. Defaults to <see cref="OneVsOne"/> so legacy payloads remain valid.
+/// 9-ball is singles-only.
+/// </summary>
+public enum BattleType
+{
+    OneVsOne = 0,
+    TwoVsTwo = 1
 }
 
 /// <summary>
@@ -20,6 +32,9 @@ public sealed class SessionGame
     public int Sequence { get; set; }
 
     public GameType GameType { get; set; }
+
+    /// <summary>Singles (1v1) or doubles (2v2). 9-ball is always <see cref="BattleType.OneVsOne"/>.</summary>
+    public BattleType BattleType { get; set; }
 
     /// <summary>True when this player broke the rack.</summary>
     public bool BrokeThisRack { get; set; }
@@ -44,6 +59,13 @@ public sealed class SessionGame
     /// golden-broke (neutral, still a recorded loss).
     /// </summary>
     public bool GoldenBreak { get; set; }
+
+    /// <summary>
+    /// True when a "train" was potted this rack (9-ball / 10-ball only). The train ball is already
+    /// counted in <see cref="BallsPotted"/>; its only scoring effect is to waive a negative accuracy
+    /// result for this player. Always false for 8-ball.
+    /// </summary>
+    public bool PottedTrain { get; set; }
 
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 

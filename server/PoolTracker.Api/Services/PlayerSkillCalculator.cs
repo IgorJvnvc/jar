@@ -39,12 +39,14 @@ public sealed class PlayerSkillCalculator : IPlayerSkillCalculator
     private const decimal PowerBreakNeutral = 0m;    // 1 pot on the break
     private const decimal PowerBreakStrong = 1m;     // 2+ pots on the break
 
-    // Accuracy (non-break pots) — applied every game.
-    private const decimal AccuracyNone = -3m;        // 0 pots
-    private const decimal AccuracyLow = -2m;         // 1-2 pots
-    private const decimal AccuracyFair = -1m;        // 3 pots
-    private const decimal AccuracyGood = -0.5m;      // 4 pots
-    private const decimal AccuracyGreat = 0.5m;      // 5+ pots
+    // Accuracy (non-break pots) — applied every game. The thresholds depend on the game type and
+    // battle type (singles vs doubles); see AccuracyForGame for the per-mode tables.
+    private const decimal AccuracyPenaltyBig = -2m;
+    private const decimal AccuracyPenaltySmall = -1m;
+    private const decimal AccuracyNeutral = 0m;
+    private const decimal AccuracyBonusSmall = 1m;
+    private const decimal AccuracyBonusMid = 1.5m;
+    private const decimal AccuracyBonusBig = 2m;
 
     // Cue control (result) — applied every game.
     private const decimal CueControlWin = 0.5m;
@@ -106,8 +108,8 @@ public sealed class PlayerSkillCalculator : IPlayerSkillCalculator
                 power += PowerForBreak(game.BreakPots);
             }
 
-            // Accuracy — every game, from non-break pots.
-            accuracy += AccuracyForPots(game.BallsPotted);
+            // Accuracy — every game, from non-break pots, scored per game/battle type.
+            accuracy += AccuracyForGame(game.GameType, game.BattleType, game.BallsPotted, game.PottedTrain);
 
             // Cue control — every game, from the result.
             cueControl += game.Won ? CueControlWin : CueControlLoss;
@@ -144,15 +146,62 @@ public sealed class PlayerSkillCalculator : IPlayerSkillCalculator
         return breakPots == 1 ? PowerBreakNeutral : PowerBreakStrong;
     }
 
-    private static decimal AccuracyForPots(int pots)
+    private static decimal AccuracyForGame(GameType gameType, BattleType battleType, int pots, bool pottedTrain)
     {
-        return pots switch
+        var delta = (gameType, battleType) switch
         {
-            <= 0 => AccuracyNone,
-            <= 2 => AccuracyLow,
-            3 => AccuracyFair,
-            4 => AccuracyGood,
-            _ => AccuracyGreat
+            (GameType.EightBall, BattleType.TwoVsTwo) => EightBallDoubles(pots),
+            (GameType.EightBall, _) => EightBallSingles(pots),
+            (GameType.NineBall, _) => NineBallSingles(pots),       // 9-ball is singles-only
+            (GameType.TenBall, BattleType.TwoVsTwo) => TenBallDoubles(pots),
+            (GameType.TenBall, _) => TenBallSingles(pots),
+            _ => AccuracyNeutral
         };
+
+        // A potted 9-/10-ball train waives a negative accuracy result (no effect when already >= 0).
+        if (pottedTrain && delta < 0m)
+        {
+            return AccuracyNeutral;
+        }
+
+        return delta;
     }
+
+    private static decimal EightBallSingles(int pots) => pots switch
+    {
+        < 3 => AccuracyPenaltySmall,
+        3 => AccuracyNeutral,
+        _ => AccuracyBonusSmall
+    };
+
+    private static decimal EightBallDoubles(int pots) => pots switch
+    {
+        < 3 => AccuracyPenaltySmall,
+        3 => AccuracyNeutral,
+        4 => AccuracyBonusSmall,
+        5 => AccuracyBonusMid,
+        _ => AccuracyBonusBig
+    };
+
+    private static decimal NineBallSingles(int pots) => pots switch
+    {
+        < 4 => AccuracyPenaltyBig,
+        4 => AccuracyNeutral,
+        _ => AccuracyBonusSmall
+    };
+
+    private static decimal TenBallSingles(int pots) => pots switch
+    {
+        <= 4 => AccuracyPenaltyBig,
+        5 => AccuracyNeutral,
+        _ => AccuracyBonusSmall
+    };
+
+    private static decimal TenBallDoubles(int pots) => pots switch
+    {
+        < 3 => AccuracyPenaltySmall,
+        3 => AccuracyNeutral,
+        4 => AccuracyBonusSmall,
+        _ => AccuracyBonusMid
+    };
 }

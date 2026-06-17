@@ -155,6 +155,7 @@ public sealed class SessionsController : ControllerBase
                 SessionId = session.Id,
                 Sequence = index + 1,
                 GameType = entry.GameType,
+                BattleType = entry.BattleType,
                 BrokeThisRack = entry.BrokeThisRack,
                 BreakPots = entry.BrokeThisRack ? entry.BreakPots : 0,
                 BallsPotted = entry.BallsPotted,
@@ -162,6 +163,7 @@ public sealed class SessionsController : ControllerBase
                 SnookersEscaped = entry.SnookersEscaped,
                 Won = entry.Won,
                 GoldenBreak = entry.GoldenBreak,
+                PottedTrain = entry.PottedTrain,
                 CreatedAtUtc = now
             })
             .ToList();

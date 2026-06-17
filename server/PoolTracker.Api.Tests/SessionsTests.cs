@@ -298,6 +298,33 @@ public sealed class SessionsTests : IntegrationTestBase
         Assert.Equal(50m, profile.CueControl);
     }
 
+    [Fact]
+    public async Task EndSession_WithNineBallDoubles_ReturnsBadRequest()
+    {
+        var session = await RegisterAndLoginAsync("NineBallDoubles");
+        var hallId = await CreateHallAsync(session.UserId, "Singles Hall");
+
+        var start = await TestApi.PostAsync(session, "/api/sessions/start", new
+        {
+            poolHallId = hallId,
+            poolHallTableId = (Guid?)null
+        });
+        await TestApi.EnsureStatusAsync(start, HttpStatusCode.Created);
+        var started = await TestApi.ReadAsAsync<SessionResponseDto>(start);
+
+        var end = await TestApi.PostAsync(session, $"/api/sessions/{started.Id}/end", new
+        {
+            games = new[]
+            {
+                // 9-ball is singles-only; a 2v2 9-ball rack must be rejected.
+                Game(gameType: "NineBall", battleType: "TwoVsTwo", ballsPotted: 5, won: true)
+            },
+            notes = (string?)null
+        });
+
+        await TestApi.EnsureStatusAsync(end, HttpStatusCode.BadRequest);
+    }
+
     private static object Game(
         string gameType = "EightBall",
         bool broke = false,
@@ -306,18 +333,22 @@ public sealed class SessionsTests : IntegrationTestBase
         int snookersFaced = 0,
         int snookersEscaped = 0,
         bool won = false,
-        bool goldenBreak = false)
+        bool goldenBreak = false,
+        string battleType = "OneVsOne",
+        bool pottedTrain = false)
     {
         return new
         {
             gameType,
+            battleType,
             brokeThisRack = broke,
             breakPots,
             ballsPotted,
             snookersFaced,
             snookersEscaped,
             won,
-            goldenBreak
+            goldenBreak,
+            pottedTrain
         };
     }
 
