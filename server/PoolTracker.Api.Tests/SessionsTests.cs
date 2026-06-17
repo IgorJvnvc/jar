@@ -102,8 +102,81 @@ public sealed class SessionsTests : IntegrationTestBase
         Assert.Equal(3, payload.SnookersEscaped);
         Assert.Equal(0, payload.GoldenBreaks);
 
+        // Per-rack detail is returned in play order, mirroring the logged racks.
+        Assert.Equal(6, payload.Games.Count);
+        Assert.Equal(Enumerable.Range(1, 6), payload.Games.Select(game => game.Sequence));
+
+        var firstRack = payload.Games[0];
+        Assert.Equal("EightBall", firstRack.GameType);
+        Assert.Equal("OneVsOne", firstRack.BattleType);
+        Assert.True(firstRack.BrokeThisRack);
+        Assert.Equal(1, firstRack.BreakPots);
+        Assert.Equal(7, firstRack.BallsPotted);
+        Assert.Equal(1, firstRack.SnookersFaced);
+        Assert.Equal(1, firstRack.SnookersEscaped);
+        Assert.True(firstRack.Won);
+        Assert.False(firstRack.PottedTrain);
+
+        Assert.Equal("NineBall", payload.Games[2].GameType);
+        Assert.True(payload.Games[2].Won);
+
+        var lastRack = payload.Games[5];
+        Assert.Equal("NineBall", lastRack.GameType);
+        Assert.False(lastRack.BrokeThisRack);
+        Assert.False(lastRack.Won);
+
         var profile = await GetProfileAsync(session);
         Assert.Equal(payload.AwardedPoints, profile.Points);
+    }
+
+    [Fact]
+    public async Task EndSession_PersistsBattleTypeAndTrainInPerRackDetail()
+    {
+        var session = await RegisterAndLoginAsync("RackDetail");
+        var hallId = await CreateHallAsync(session.UserId, "Detail Hall");
+
+        var start = await TestApi.PostAsync(session, "/api/sessions/start", new
+        {
+            poolHallId = hallId,
+            poolHallTableId = (Guid?)null
+        });
+        await TestApi.EnsureStatusAsync(start, HttpStatusCode.Created);
+        var started = await TestApi.ReadAsAsync<SessionResponseDto>(start);
+
+        await Factory.ExecuteDbContextAsync(async dbContext =>
+        {
+            var entity = await dbContext.Sessions.SingleAsync(current => current.Id == started.Id);
+            entity.StartedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-30);
+            await dbContext.SaveChangesAsync();
+        });
+
+        var end = await TestApi.PostAsync(session, $"/api/sessions/{started.Id}/end", new
+        {
+            games = new[]
+            {
+                Game(gameType: "TenBall", battleType: "TwoVsTwo", broke: true, breakPots: 1, ballsPotted: 5, won: true),
+                Game(gameType: "NineBall", ballsPotted: 6, won: true, pottedTrain: true)
+            },
+            notes = (string?)null
+        });
+
+        await TestApi.EnsureStatusAsync(end, HttpStatusCode.OK);
+        var payload = await TestApi.ReadAsAsync<SessionResponseDto>(end);
+
+        Assert.Equal(2, payload.Games.Count);
+
+        var doubles = payload.Games[0];
+        Assert.Equal(1, doubles.Sequence);
+        Assert.Equal("TenBall", doubles.GameType);
+        Assert.Equal("TwoVsTwo", doubles.BattleType);
+        Assert.True(doubles.BrokeThisRack);
+        Assert.False(doubles.PottedTrain);
+
+        var train = payload.Games[1];
+        Assert.Equal(2, train.Sequence);
+        Assert.Equal("NineBall", train.GameType);
+        Assert.Equal("OneVsOne", train.BattleType);
+        Assert.True(train.PottedTrain);
     }
 
     [Fact]

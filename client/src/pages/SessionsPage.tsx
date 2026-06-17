@@ -349,23 +349,57 @@ export function SessionsPage() {
         ) : (
           <ul className="stack-list">
             {recentSessions.map((session) => (
-              <li key={session.id} className="row-item row-item--session">
-                <div>
-                  <strong>{`${session.ballsPotted} pots \u2022 ${session.gamesWon}-${session.gamesLost}`}</strong>
-                  <span>{formatDateTime(session.startedAtUtc)}</span>
-                </div>
-                <small>
-                  {formatDurationFrom(session.startedAtUtc, session.endedAtUtc)}
-                  {session.awardedPoints > 0 ? ` \u2022 +${session.awardedPoints} pts` : ''}
-                  {session.goldenBreaks > 0 ? ` \u2022 ${session.goldenBreaks}x golden` : ''}
-                  {session.isFlaggedForValidation ? ' \u2022 flagged' : ''}
-                </small>
-              </li>
+              <RecentSessionItem key={session.id} session={session} />
             ))}
           </ul>
         )}
       </Card>
     </div>
+  )
+}
+
+function RecentSessionItem({ session }: { session: SessionResponse }) {
+  const [expanded, setExpanded] = useState(false)
+  const hasGames = session.games.length > 0
+  const rackLabel = session.games.length === 1 ? 'rack' : 'racks'
+
+  return (
+    <li className="session-row">
+      <button
+        type="button"
+        className="session-row__summary"
+        onClick={() => setExpanded((current) => !current)}
+        disabled={!hasGames}
+        aria-expanded={hasGames ? expanded : undefined}
+      >
+        <div>
+          <strong>{`${session.ballsPotted} pots \u2022 ${session.gamesWon}-${session.gamesLost}`}</strong>
+          <span>{formatDateTime(session.startedAtUtc)}</span>
+        </div>
+        <small>
+          {formatDurationFrom(session.startedAtUtc, session.endedAtUtc)}
+          {session.awardedPoints > 0 ? ` \u2022 +${session.awardedPoints} pts` : ''}
+          {session.goldenBreaks > 0 ? ` \u2022 ${session.goldenBreaks}x golden` : ''}
+          {session.isFlaggedForValidation ? ' \u2022 flagged' : ''}
+          {hasGames ? ` \u2022 ${session.games.length} ${rackLabel} ${expanded ? '\u25B4' : '\u25BE'}` : ''}
+        </small>
+      </button>
+
+      {expanded && hasGames ? (
+        <ul className="rack-detail-list">
+          {session.games.map((game) => (
+            <li key={game.sequence} className="rack-detail-list__item">
+              <strong>
+                {`Rack ${game.sequence} \u2022 ${GAME_TYPE_LABELS[game.gameType]} \u2022 ${
+                  game.won ? 'Won' : 'Lost'
+                }`}
+              </strong>
+              <span>{describeGame(game)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
   )
 }
 

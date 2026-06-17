@@ -413,6 +413,69 @@ select {
   font-size: 0.8rem;
 }
 
+.session-row {
+  background: rgba(7, 13, 20, 0.45);
+  border: 1px solid rgba(138, 173, 161, 0.15);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.session-row__summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.session-row__summary:disabled {
+  cursor: default;
+}
+
+.session-row__summary > div {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.session-row__summary span,
+.session-row__summary small {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.rack-detail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.6rem 0.6rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.rack-detail-list__item {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-md);
+  background: rgba(7, 13, 20, 0.55);
+  border: 1px solid rgba(138, 173, 161, 0.12);
+}
+
+.rack-detail-list__item strong {
+  font-size: 0.82rem;
+}
+
+.rack-detail-list__item span {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
 .state-text {
   margin: 0;
   color: var(--text-dim);

@@ -190,6 +190,7 @@ export type SessionResponse = {
   awardedPoints: number
   notes: string | null
   endReason: SessionEndReason | null
+  games: SessionGameDetail[]
 }
 
 export type StartSessionRequest = {
@@ -212,6 +213,12 @@ export type GameLogEntry = {
   won: boolean
   goldenBreak: boolean
   pottedTrain: boolean
+}
+
+// Per-rack detail returned on a completed SessionResponse. Structurally a GameLogEntry
+// plus its 1-based sequence within the session.
+export type SessionGameDetail = GameLogEntry & {
+  sequence: number
 }
 
 export type EndSessionRequest = {

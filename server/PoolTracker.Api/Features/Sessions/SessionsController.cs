@@ -44,6 +44,7 @@ public sealed class SessionsController : ControllerBase
         var session = await dbContext.Sessions
             .AsNoTracking()
             .Include(current => current.Report)
+            .Include(current => current.Games)
             .SingleOrDefaultAsync(current => current.UserId == userId.Value && current.IsActive, cancellationToken);
 
         if (session is null)
@@ -170,6 +171,8 @@ public sealed class SessionsController : ControllerBase
 
         if (games.Count > 0)
         {
+            // Add through the DbSet; EF relationship fixup attaches them to the tracked
+            // session.Games navigation so the end-session response carries the per-rack detail.
             dbContext.SessionGames.AddRange(games);
         }
 
@@ -210,6 +213,7 @@ public sealed class SessionsController : ControllerBase
         var sessions = await dbContext.Sessions
             .AsNoTracking()
             .Include(current => current.Report)
+            .Include(current => current.Games)
             .Where(current => current.UserId == userId.Value)
             .ToListAsync(cancellationToken);
 
@@ -225,6 +229,22 @@ public sealed class SessionsController : ControllerBase
     private static SessionResponse ToResponse(Session session, int awardedPoints)
     {
         var report = session.Report;
+
+        var games = session.Games
+            .OrderBy(game => game.Sequence)
+            .Select(game => new SessionGameDetail(
+                game.Sequence,
+                game.GameType,
+                game.BattleType,
+                game.BrokeThisRack,
+                game.BreakPots,
+                game.BallsPotted,
+                game.SnookersFaced,
+                game.SnookersEscaped,
+                game.Won,
+                game.GoldenBreak,
+                game.PottedTrain))
+            .ToList();
 
         return new SessionResponse(
             session.Id,
@@ -248,7 +268,8 @@ public sealed class SessionsController : ControllerBase
             report?.SpinDelta ?? 0m,
             awardedPoints,
             report?.Notes,
-            session.EndReason);
+            session.EndReason,
+            games);
     }
 
     private Guid? GetCurrentUserId()

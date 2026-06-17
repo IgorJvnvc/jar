@@ -64,7 +64,22 @@ internal sealed record SessionResponseDto(
     decimal SpinDelta,
     int AwardedPoints,
     string? Notes,
-    string? EndReason
+    string? EndReason,
+    IReadOnlyList<SessionGameDetailDto> Games
+);
+
+internal sealed record SessionGameDetailDto(
+    int Sequence,
+    string GameType,
+    string BattleType,
+    bool BrokeThisRack,
+    int BreakPots,
+    int BallsPotted,
+    int SnookersFaced,
+    int SnookersEscaped,
+    bool Won,
+    bool GoldenBreak,
+    bool PottedTrain
 );
 
 internal sealed record HallDayCompetitionEntryResponseDto(
