@@ -40,13 +40,21 @@ public sealed class PlayerSkillCalculator : IPlayerSkillCalculator
     private const decimal PowerBreakStrong = 1m;     // 2+ pots on the break
 
     // Accuracy (non-break pots) — applied every game. The thresholds depend on the game type and
-    // battle type (singles vs doubles); see AccuracyForGame for the per-mode tables.
+    // battle type (singles vs doubles); see AccuracyForGame for the per-mode tables. In 9-/10-ball
+    // each break pot also adds +1 accuracy (BreakAccuracyBonus), on top of the Power delta.
     private const decimal AccuracyPenaltyBig = -2m;
     private const decimal AccuracyPenaltySmall = -1m;
     private const decimal AccuracyNeutral = 0m;
+    private const decimal AccuracyBonusTiny = 0.5m;
     private const decimal AccuracyBonusSmall = 1m;
     private const decimal AccuracyBonusMid = 1.5m;
     private const decimal AccuracyBonusBig = 2m;
+
+    // Train (9-/10-ball) hard-sets the accuracy table component from the result: potting the money
+    // ball early and winning is rewarded; losing to an opponent's train softens the penalty. The
+    // break bonus, Power, cue control and spin still stack on top.
+    private const decimal TrainWinAccuracy = 0.5m;
+    private const decimal TrainLossAccuracy = -0.5m;
 
     // Cue control (result) — applied every game.
     private const decimal CueControlWin = 0.5m;
@@ -108,8 +116,9 @@ public sealed class PlayerSkillCalculator : IPlayerSkillCalculator
                 power += PowerForBreak(game.BreakPots);
             }
 
-            // Accuracy — every game, from non-break pots, scored per game/battle type.
-            accuracy += AccuracyForGame(game.GameType, game.BattleType, game.BallsPotted, game.PottedTrain);
+            // Accuracy — table component (with the train override) plus the 9-/10-ball break bonus.
+            accuracy += AccuracyForGame(game.GameType, game.BattleType, game.BallsPotted, game.PottedTrain, game.Won);
+            accuracy += BreakAccuracyBonus(game.GameType, game.BreakPots);
 
             // Cue control — every game, from the result.
             cueControl += game.Won ? CueControlWin : CueControlLoss;
@@ -146,9 +155,16 @@ public sealed class PlayerSkillCalculator : IPlayerSkillCalculator
         return breakPots == 1 ? PowerBreakNeutral : PowerBreakStrong;
     }
 
-    private static decimal AccuracyForGame(GameType gameType, BattleType battleType, int pots, bool pottedTrain)
+    private static decimal AccuracyForGame(GameType gameType, BattleType battleType, int pots, bool pottedTrain, bool won)
     {
-        var delta = (gameType, battleType) switch
+        // A 9-/10-ball train hard-sets the table component: a win is rewarded, a loss is softened.
+        // (PottedTrain is only ever true for 9-/10-ball.) The break bonus is added separately.
+        if (pottedTrain)
+        {
+            return won ? TrainWinAccuracy : TrainLossAccuracy;
+        }
+
+        return (gameType, battleType) switch
         {
             (GameType.EightBall, BattleType.TwoVsTwo) => EightBallDoubles(pots),
             (GameType.EightBall, _) => EightBallSingles(pots),
@@ -157,51 +173,49 @@ public sealed class PlayerSkillCalculator : IPlayerSkillCalculator
             (GameType.TenBall, _) => TenBallSingles(pots),
             _ => AccuracyNeutral
         };
-
-        // A potted 9-/10-ball train waives a negative accuracy result (no effect when already >= 0).
-        if (pottedTrain && delta < 0m)
-        {
-            return AccuracyNeutral;
-        }
-
-        return delta;
     }
 
+    // In 9-/10-ball each ball potted on the break adds +1 accuracy, on top of the Power delta.
+    // BreakPots is 0 when the player did not break, so no extra gating is needed.
+    private static decimal BreakAccuracyBonus(GameType gameType, int breakPots)
+        => gameType is GameType.NineBall or GameType.TenBall ? breakPots : 0m;
+
+    // 8-ball singles: <=4 -> -1, >=5 -> +0.5
     private static decimal EightBallSingles(int pots) => pots switch
     {
-        < 3 => AccuracyPenaltySmall,
-        3 => AccuracyNeutral,
-        _ => AccuracyBonusSmall
+        <= 4 => AccuracyPenaltySmall,
+        _ => AccuracyBonusTiny
     };
 
+    // 8-ball doubles: <3 -> -1, 3-4 -> +1, >=5 -> +2
     private static decimal EightBallDoubles(int pots) => pots switch
     {
         < 3 => AccuracyPenaltySmall,
-        3 => AccuracyNeutral,
-        4 => AccuracyBonusSmall,
-        5 => AccuracyBonusMid,
+        < 5 => AccuracyBonusSmall,
         _ => AccuracyBonusBig
     };
 
+    // 9-ball singles only: <3 -> -2, 3 -> 0, >3 -> +1
     private static decimal NineBallSingles(int pots) => pots switch
     {
-        < 4 => AccuracyPenaltyBig,
-        4 => AccuracyNeutral,
+        < 3 => AccuracyPenaltyBig,
+        3 => AccuracyNeutral,
         _ => AccuracyBonusSmall
     };
 
+    // 10-ball singles: <=4 -> -2, 5 -> +1, >=6 -> +1.5
     private static decimal TenBallSingles(int pots) => pots switch
     {
         <= 4 => AccuracyPenaltyBig,
-        5 => AccuracyNeutral,
-        _ => AccuracyBonusSmall
+        5 => AccuracyBonusSmall,
+        _ => AccuracyBonusMid
     };
 
+    // 10-ball doubles: <=2 -> -1, 3 -> 0, >3 -> +1
     private static decimal TenBallDoubles(int pots) => pots switch
     {
-        < 3 => AccuracyPenaltySmall,
+        <= 2 => AccuracyPenaltySmall,
         3 => AccuracyNeutral,
-        4 => AccuracyBonusSmall,
-        _ => AccuracyBonusMid
+        _ => AccuracyBonusSmall
     };
 }

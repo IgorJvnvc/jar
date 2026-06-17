@@ -120,7 +120,7 @@ function describeGame(game: GameLogEntry): string {
   }
 
   if (game.pottedTrain) {
-    parts.push(trainLabel(game.gameType))
+    parts.push(game.won ? `potted ${trainLabel(game.gameType)}` : `lost to ${trainLabel(game.gameType)}`)
   }
 
   if (game.goldenBreak) {
@@ -575,7 +575,9 @@ function ActiveSessionPanel({ session, isSubmitting, onSubmit }: ActiveSessionPa
                   checked={draft.pottedTrain}
                   onChange={(event) => updateDraft({ pottedTrain: event.target.checked })}
                 />
-                {`${trainLabel(draft.gameType)} potted (waives a low-pot accuracy penalty)`}
+                {draft.won
+                  ? `Potted the ${trainLabel(draft.gameType)} early (+0.5 accuracy)`
+                  : `Lost to opponent's ${trainLabel(draft.gameType)} (penalty softened to -0.5)`}
               </label>
             ) : null}
 

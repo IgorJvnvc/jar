@@ -61,9 +61,10 @@ public sealed class SessionGame
     public bool GoldenBreak { get; set; }
 
     /// <summary>
-    /// True when a "train" was potted this rack (9-ball / 10-ball only). The train ball is already
-    /// counted in <see cref="BallsPotted"/>; its only scoring effect is to waive a negative accuracy
-    /// result for this player. Always false for 8-ball.
+    /// True when this rack ended on a "train" — the 9-/10-ball money ball potted early (9-ball /
+    /// 10-ball only). Because potting the money ball wins the rack, combine with <see cref="Won"/>:
+    /// a win means this player potted it (accuracy hard-set to +0.5); a loss means the opponent did
+    /// (accuracy hard-set to -0.5). The break bonus and other stats still apply. Always false for 8-ball.
     /// </summary>
     public bool PottedTrain { get; set; }
 

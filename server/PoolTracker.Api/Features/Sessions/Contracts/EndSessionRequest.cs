@@ -41,7 +41,10 @@ public sealed class GameLogEntry : IValidatableObject
 
     public bool GoldenBreak { get; init; }
 
-    /// <summary>True when a 9-ball/10-ball train was potted this rack. Waives a negative accuracy result.</summary>
+    /// <summary>
+    /// True when this rack ended on a 9-/10-ball train (money ball potted early). Combined with
+    /// <see cref="Won"/>: a win hard-sets accuracy to +0.5, a loss to -0.5. 9-/10-ball only.
+    /// </summary>
     public bool PottedTrain { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

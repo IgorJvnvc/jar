@@ -129,4 +129,5 @@ Signed APK output path:
 - **Phase 4a (done)** — Live per-game session tracking, per-session skill scoring (power/accuracy/cue control/spin), golden-break bonus, and cue-aware effective stats.
 - **Phase 4b (done)** — Battle types (1v1/2v2) and 10-ball support, with per-mode accuracy tables and a 9-/10-ball "train" that waives a low-pot accuracy penalty.
 - **Phase 4c (done)** — Per-rack detail surfaced on completed sessions, with an expandable rack-by-rack breakdown in the session history.
+- **Phase 4d (done)** — Revised accuracy scoring: retuned per-mode tables, a 9-/10-ball break-pot accuracy bonus (+1 per break pot, on top of power), and a two-sided "train" (potting the money ball early hard-sets accuracy to +0.5 on a win, −0.5 on a loss).
 - **Phase 4+ (planned)** — Levels/XP, achievements, and match simulation.

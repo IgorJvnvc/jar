@@ -49,32 +49,29 @@ public sealed class PlayerSkillCalculatorTests
     }
 
     [Theory]
-    // 8-ball singles: <3 -> -1, 3 -> 0, >3 -> +1
+    // 8-ball singles: <=4 -> -1, >=5 -> +0.5
     [InlineData(GameType.EightBall, BattleType.OneVsOne, 0, -1.0)]
-    [InlineData(GameType.EightBall, BattleType.OneVsOne, 2, -1.0)]
-    [InlineData(GameType.EightBall, BattleType.OneVsOne, 3, 0.0)]
-    [InlineData(GameType.EightBall, BattleType.OneVsOne, 4, 1.0)]
-    // 8-ball doubles: <3 -> -1, 3 -> 0, 4 -> +1, 5 -> +1.5, >=6 -> +2
+    [InlineData(GameType.EightBall, BattleType.OneVsOne, 4, -1.0)]
+    [InlineData(GameType.EightBall, BattleType.OneVsOne, 5, 0.5)]
+    // 8-ball doubles: <3 -> -1, 3-4 -> +1, >=5 -> +2
     [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 2, -1.0)]
-    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 3, 0.0)]
+    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 3, 1.0)]
     [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 4, 1.0)]
-    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 5, 1.5)]
-    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 6, 2.0)]
+    [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 5, 2.0)]
     [InlineData(GameType.EightBall, BattleType.TwoVsTwo, 9, 2.0)]
-    // 9-ball singles only: <4 -> -2, 4 -> 0, >4 -> +1
-    [InlineData(GameType.NineBall, BattleType.OneVsOne, 3, -2.0)]
-    [InlineData(GameType.NineBall, BattleType.OneVsOne, 4, 0.0)]
-    [InlineData(GameType.NineBall, BattleType.OneVsOne, 5, 1.0)]
-    // 10-ball singles: <=4 -> -2, 5 -> 0, >5 -> +1
+    // 9-ball singles only: <3 -> -2, 3 -> 0, >3 -> +1
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 2, -2.0)]
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 3, 0.0)]
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 4, 1.0)]
+    // 10-ball singles: <=4 -> -2, 5 -> +1, >=6 -> +1.5
     [InlineData(GameType.TenBall, BattleType.OneVsOne, 4, -2.0)]
-    [InlineData(GameType.TenBall, BattleType.OneVsOne, 5, 0.0)]
-    [InlineData(GameType.TenBall, BattleType.OneVsOne, 6, 1.0)]
-    // 10-ball doubles: <3 -> -1, 3 -> 0, 4 -> +1, >=5 -> +1.5
+    [InlineData(GameType.TenBall, BattleType.OneVsOne, 5, 1.0)]
+    [InlineData(GameType.TenBall, BattleType.OneVsOne, 6, 1.5)]
+    [InlineData(GameType.TenBall, BattleType.OneVsOne, 8, 1.5)]
+    // 10-ball doubles: <=2 -> -1, 3 -> 0, >3 -> +1
     [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 2, -1.0)]
     [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 3, 0.0)]
     [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 4, 1.0)]
-    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 5, 1.5)]
-    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 8, 1.5)]
     public void Calculate_Accuracy_UsesPerModeTables(GameType gameType, BattleType battleType, int pots, double expected)
     {
         var result = calculator.Calculate(new[]
@@ -86,29 +83,60 @@ public sealed class PlayerSkillCalculatorTests
     }
 
     [Theory]
-    [InlineData(GameType.NineBall, BattleType.OneVsOne, 3)]   // would be -2 without the train
-    [InlineData(GameType.TenBall, BattleType.OneVsOne, 4)]    // would be -2 without the train
-    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 2)]    // would be -1 without the train
-    public void Calculate_Accuracy_TrainWaivesNegativeResult(GameType gameType, BattleType battleType, int pots)
+    // Winner + train: the table component is hard-set to +0.5 regardless of pot count.
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 2)]   // table would be -2
+    [InlineData(GameType.TenBall, BattleType.OneVsOne, 4)]    // table would be -2
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 8)]   // table would be +1
+    public void Calculate_Accuracy_TrainWin_HardSetsToPlusHalf(GameType gameType, BattleType battleType, int pots)
     {
         var result = calculator.Calculate(new[]
         {
             Game(broke: false, ballsPotted: pots, won: true, gameType: gameType, battleType: battleType, pottedTrain: true)
         });
 
-        Assert.Equal(0m, result.AccuracyDelta);
+        Assert.Equal(0.5m, result.AccuracyDelta);
     }
 
-    [Fact]
-    public void Calculate_Accuracy_TrainDoesNotReduceAPositiveResult()
+    [Theory]
+    // Loser + train (opponent potted the money ball early): table component hard-set to -0.5.
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 2)]   // table would be -2
+    [InlineData(GameType.TenBall, BattleType.TwoVsTwo, 2)]    // table would be -1
+    [InlineData(GameType.NineBall, BattleType.OneVsOne, 8)]   // table would be +1, still softened to -0.5
+    public void Calculate_Accuracy_TrainLoss_HardSetsToMinusHalf(GameType gameType, BattleType battleType, int pots)
     {
         var result = calculator.Calculate(new[]
         {
-            // 9-ball with 5 pots is +1; potting the train must not pull it down to 0.
-            Game(broke: false, ballsPotted: 5, won: true, gameType: GameType.NineBall, pottedTrain: true)
+            Game(broke: false, ballsPotted: pots, won: false, gameType: gameType, battleType: battleType, pottedTrain: true)
         });
 
-        Assert.Equal(1m, result.AccuracyDelta);
+        Assert.Equal(-0.5m, result.AccuracyDelta);
+    }
+
+    [Theory]
+    // 9-/10-ball break pots add +1 accuracy each, on top of the per-mode table.
+    [InlineData(GameType.NineBall, 4, 2, 3.0)]   // table +1 + 2 break = +3
+    [InlineData(GameType.TenBall, 6, 1, 2.5)]    // table +1.5 + 1 break = +2.5
+    public void Calculate_Accuracy_BreakPotsAddBonusInNineAndTenBall(GameType gameType, int pots, int breakPots, double expected)
+    {
+        var result = calculator.Calculate(new[]
+        {
+            Game(broke: true, breakPots: breakPots, ballsPotted: pots, won: true, gameType: gameType)
+        });
+
+        Assert.Equal((decimal)expected, result.AccuracyDelta);
+    }
+
+    [Fact]
+    public void Calculate_Accuracy_EightBallBreakPotsDoNotAddAccuracyBonus()
+    {
+        // 8-ball break pots feed Power only; accuracy comes from the per-mode table alone.
+        var result = calculator.Calculate(new[]
+        {
+            Game(broke: true, breakPots: 2, ballsPotted: 5, won: true, gameType: GameType.EightBall)
+        });
+
+        Assert.Equal(0.5m, result.AccuracyDelta);   // 8-ball singles, 5 pots
+        Assert.Equal(1m, result.PowerDelta);         // 2 break pots -> strong break
     }
 
     [Fact]
@@ -152,7 +180,7 @@ public sealed class PlayerSkillCalculatorTests
     {
         var result = calculator.Calculate(new[]
         {
-            // Despite 0 non-break pots (which would normally be -3 accuracy), the override wins.
+            // Despite 0 non-break pots (which would normally be a low-pot penalty), the override wins.
             Game(broke: true, breakPots: 1, ballsPotted: 0, won: true, goldenBreak: true)
         });
 
