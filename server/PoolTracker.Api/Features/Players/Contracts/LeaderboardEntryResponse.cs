@@ -11,5 +11,7 @@ public sealed record LeaderboardEntryResponse(
     decimal WinRate,
     int TotalBallsPotted,
     int TotalSessions,
-    string? Title
+    string? Title,
+    int Level,
+    string LevelTitle
 );

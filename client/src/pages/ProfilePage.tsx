@@ -106,6 +106,26 @@ export function ProfilePage() {
 
       {profile && form ? (
         <>
+          <Card
+            title={`Level ${profile.level}`}
+            subtitle={`${profile.levelTitle} \u00b7 ${Math.max(profile.experienceForNextLevel - profile.experienceIntoLevel, 0)} XP to next level`}
+          >
+            <div className="level-card">
+              <span className="metric-value">Lvl {profile.level}</span>
+              <span className="metric-chip">{profile.levelTitle}</span>
+            </div>
+            <div className="skill-stat__bar level-card__bar">
+              <div
+                className="skill-stat__bar-fill"
+                style={{ width: `${levelProgressPercent(profile.experienceIntoLevel, profile.experienceForNextLevel)}%` }}
+              />
+            </div>
+            <span className="skill-stat__detail">
+              {profile.experienceIntoLevel} / {profile.experienceForNextLevel} XP &middot;{' '}
+              {profile.experience.toLocaleString()} total
+            </span>
+          </Card>
+
           <div className="identity-row">
             <Card title="Crew Points" subtitle="Spend in the cue shop">
               <div className="metric-value">{profile.points}</div>
@@ -114,7 +134,7 @@ export function ProfilePage() {
               <div className="metric-value">{profile.debtPoints}</div>
             </Card>
             <Card title="Title" subtitle="Earned distinction">
-              <div className="metric-chip">{profile.title ?? 'No active title'}</div>
+              <div className="metric-chip">{profile.title ?? profile.levelTitle}</div>
             </Card>
             <Card title="Equipped Cue" subtitle="Active loadout">
               <div className="metric-chip">{equippedCue?.name ?? 'Default Cue'}</div>
@@ -271,6 +291,14 @@ function formatStat(value: number): string {
 
 function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, value))
+}
+
+function levelProgressPercent(into: number, forNext: number): number {
+  if (forNext <= 0) {
+    return 0
+  }
+
+  return clampPercent((into / forNext) * 100)
 }
 
 function SkillStat({

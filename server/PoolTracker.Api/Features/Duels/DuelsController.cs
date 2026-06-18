@@ -445,9 +445,11 @@ public sealed class DuelsController : ControllerBase
 
         var winnerProfile = await pointsLedger.GetOrCreateProfileAsync(winnerUserId, cancellationToken);
         winnerProfile.DuelsWon++;
+        winnerProfile.Experience += ExperienceCalculator.ForDuel(isWinner: true);
 
         var loserProfile = await pointsLedger.GetOrCreateProfileAsync(loserUserId, cancellationToken);
         loserProfile.DuelsLost++;
+        // Losers earn no duel XP (ExperienceCalculator.ForDuel(false) == 0).
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

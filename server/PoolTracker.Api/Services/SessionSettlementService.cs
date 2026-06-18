@@ -106,9 +106,28 @@ public sealed class SessionSettlementService : ISessionSettlementService
 
         await ApplySkillDeltasAsync(session.UserId, skills, cancellationToken);
 
+        await AwardSessionExperienceAsync(session.UserId, skills, pointsMinutes, cancellationToken);
+
         await UpsertDailyMetricAsync(session.UserId, input, cancellationToken);
 
         return sessionPoints + goldenPoints;
+    }
+
+    private async Task AwardSessionExperienceAsync(
+        Guid userId,
+        SkillCalculationResult skills,
+        double minutes,
+        CancellationToken cancellationToken)
+    {
+        var experience = ExperienceCalculator.ForSession(skills, minutes);
+        if (experience <= 0)
+        {
+            return;
+        }
+
+        var profile = await pointsLedger.GetOrCreateProfileAsync(userId, cancellationToken);
+        profile.Experience += experience;
+        profile.UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 
     private async Task ApplySkillDeltasAsync(Guid userId, SkillCalculationResult skills, CancellationToken cancellationToken)

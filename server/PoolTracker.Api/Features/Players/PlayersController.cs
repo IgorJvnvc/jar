@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PoolTracker.Api.Data;
 using PoolTracker.Api.Features.Players.Contracts;
+using PoolTracker.Api.Services;
 
 namespace PoolTracker.Api.Features.Players;
 
@@ -96,7 +97,8 @@ public sealed class PlayersController : ControllerBase
                 user.DisplayName,
                 AvatarColorHex = profile != null ? profile.AvatarColorHex : "#1d7a59",
                 Points = profile != null ? profile.Points : 0,
-                Title = profile != null ? profile.Title : null
+                Title = profile != null ? profile.Title : null,
+                Experience = profile != null ? profile.Experience : 0
             })
             .ToListAsync(cancellationToken);
 
@@ -112,6 +114,8 @@ public sealed class PlayersController : ControllerBase
                     ? Math.Round((decimal)gamesWon / gamesPlayed, 4)
                     : 0m;
 
+                var level = LevelingMath.GetLevelInfo(user.Experience);
+
                 return new LeaderboardEntryResponse(
                     user.Id,
                     user.DisplayName,
@@ -123,7 +127,9 @@ public sealed class PlayersController : ControllerBase
                     winRate,
                     stats?.BallsPotted ?? 0,
                     stats?.SessionCount ?? 0,
-                    user.Title);
+                    user.Title,
+                    level.Level,
+                    level.Title);
             })
             .OrderByDescending(entry => entry.WinRate)
             .ThenByDescending(entry => entry.Points)
@@ -151,7 +157,8 @@ public sealed class PlayersController : ControllerBase
                 Points = profile != null ? profile.Points : 0,
                 Title = profile != null ? profile.Title : null,
                 DuelsWon = profile != null ? profile.DuelsWon : 0,
-                DuelsLost = profile != null ? profile.DuelsLost : 0
+                DuelsLost = profile != null ? profile.DuelsLost : 0,
+                Experience = profile != null ? profile.Experience : 0
             })
             .ToListAsync(cancellationToken);
 
@@ -163,6 +170,8 @@ public sealed class PlayersController : ControllerBase
                     ? Math.Round((decimal)player.DuelsWon / duelsPlayed, 4)
                     : 0m;
 
+                var level = LevelingMath.GetLevelInfo(player.Experience);
+
                 return new DuelLeaderboardEntryResponse(
                     player.Id,
                     player.DisplayName,
@@ -172,7 +181,9 @@ public sealed class PlayersController : ControllerBase
                     duelsPlayed,
                     winRate,
                     player.Points,
-                    player.Title);
+                    player.Title,
+                    level.Level,
+                    level.Title);
             })
             .Where(entry => entry.DuelsPlayed > 0)
             .OrderByDescending(entry => entry.WinRate)

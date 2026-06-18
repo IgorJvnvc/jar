@@ -127,6 +127,10 @@ public sealed class SessionsTests : IntegrationTestBase
 
         var profile = await GetProfileAsync(session);
         Assert.Equal(payload.AwardedPoints, profile.Points);
+
+        // Session XP: 6 games (+30) + 4 wins (+40) + 33 balls (+33) + 3 snooker escapes (+9)
+        // + 13 whole 5-minute blocks of the ~65-minute session (+13) = 125 (more if the run is slow).
+        Assert.True(profile.Experience >= 125);
     }
 
     [Fact]

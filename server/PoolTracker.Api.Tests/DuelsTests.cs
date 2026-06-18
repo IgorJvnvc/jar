@@ -269,6 +269,10 @@ public sealed class DuelsTests : IntegrationTestBase
         Assert.Equal(0, winnerProfile.DuelsLost);
         Assert.Equal(0, loserProfile.DuelsWon);
         Assert.Equal(1, loserProfile.DuelsLost);
+
+        // Winner earns the duel XP trickle; the loser earns none.
+        Assert.Equal(10, winnerProfile.Experience);
+        Assert.Equal(0, loserProfile.Experience);
     }
 
     [Fact]

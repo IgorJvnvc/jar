@@ -120,6 +120,8 @@ public sealed class ProfileController : ControllerBase
         var cueControlBonus = equippedCue?.CueControlBonus ?? 0m;
         var spinBonus = equippedCue?.SpinBonus ?? 0m;
 
+        var level = LevelingMath.GetLevelInfo(profile.Experience);
+
         return new ProfileResponse(
             user.Id,
             user.DisplayName,
@@ -141,6 +143,11 @@ public sealed class ProfileController : ControllerBase
             profile.DuelsLost,
             gamesWon,
             gamesLost,
+            level.Level,
+            level.Title,
+            level.Experience,
+            level.ExperienceIntoLevel,
+            level.ExperienceForNextLevel,
             profile.UpdatedAtUtc);
     }
 

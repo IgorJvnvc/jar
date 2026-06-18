@@ -34,6 +34,11 @@ internal sealed record ProfileResponseDto(
     int DuelsLost,
     int GamesWon,
     int GamesLost,
+    int Level,
+    string LevelTitle,
+    long Experience,
+    int ExperienceIntoLevel,
+    int ExperienceForNextLevel,
     DateTimeOffset UpdatedAtUtc
 );
 
@@ -170,7 +175,9 @@ internal sealed record LeaderboardEntryResponseDto(
     decimal WinRate,
     int TotalBallsPotted,
     int TotalSessions,
-    string? Title
+    string? Title,
+    int Level,
+    string LevelTitle
 );
 
 internal sealed record DuelLeaderboardEntryResponseDto(
@@ -182,7 +189,9 @@ internal sealed record DuelLeaderboardEntryResponseDto(
     int DuelsPlayed,
     decimal WinRate,
     int Points,
-    string? Title
+    string? Title,
+    int Level,
+    string LevelTitle
 );
 
 internal sealed record CueItemResponseDto(

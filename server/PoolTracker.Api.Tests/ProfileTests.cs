@@ -23,6 +23,48 @@ public sealed class ProfileTests : IntegrationTestBase
         Assert.Equal(0, profile.Points);
         Assert.Equal(0, profile.DebtPoints);
         Assert.Equal("#1d7a59", profile.AvatarColorHex);
+
+        // A brand-new player starts at level 1 with no experience.
+        Assert.Equal(1, profile.Level);
+        Assert.Equal("Greenhorn", profile.LevelTitle);
+        Assert.Equal(0, profile.Experience);
+        Assert.Equal(0, profile.ExperienceIntoLevel);
+        Assert.Equal(80, profile.ExperienceForNextLevel);
+    }
+
+    [Fact]
+    public async Task GetProfile_DerivesLevelAndTitleFromExperience()
+    {
+        var session = await RegisterAndLoginAsync("ProfileLevel");
+
+        await Factory.ExecuteDbContextAsync(async dbContext =>
+        {
+            dbContext.PlayerProfiles.Add(new PlayerProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = session.UserId,
+                Experience = 460, // exactly the start of level 5
+                AvatarColorHex = "#1d7a59",
+                Power = 50,
+                Accuracy = 50,
+                CueControl = 50,
+                Spin = 50
+            });
+
+            await dbContext.SaveChangesAsync();
+        });
+
+        var response = await TestApi.GetAsync(session, "/api/profile/me");
+        await TestApi.EnsureStatusAsync(response, HttpStatusCode.OK);
+        var profile = await TestApi.ReadAsAsync<ProfileResponseDto>(response);
+
+        Assert.Equal(5, profile.Level);
+        Assert.Equal("Drifter", profile.LevelTitle);
+        Assert.Equal(460, profile.Experience);
+        Assert.Equal(0, profile.ExperienceIntoLevel);
+        Assert.Equal(195, profile.ExperienceForNextLevel);
+        // No debt, so the title slot falls through to the level title on the client.
+        Assert.Null(profile.Title);
     }
 
     [Fact]

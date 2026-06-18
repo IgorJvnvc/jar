@@ -9,5 +9,7 @@ public sealed record DuelLeaderboardEntryResponse(
     int DuelsPlayed,
     decimal WinRate,
     int Points,
-    string? Title
+    string? Title,
+    int Level,
+    string LevelTitle
 );

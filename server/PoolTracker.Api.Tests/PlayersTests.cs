@@ -64,9 +64,31 @@ public sealed class PlayersTests : IntegrationTestBase
         Assert.Equal(0m, rookieEntry.WinRate);
         Assert.Equal(0, rookieEntry.TotalGamesPlayed);
 
+        // Players with no experience sit at level 1 / Greenhorn.
+        Assert.Equal(1, sharpEntry.Level);
+        Assert.Equal("Greenhorn", sharpEntry.LevelTitle);
+
         // Highest win rate wins regardless of points; points only break win-rate ties.
         Assert.True(board.IndexOf(sharpEntry) < board.IndexOf(steadyEntry));
         Assert.True(board.IndexOf(steadyEntry) < board.IndexOf(rookieEntry));
+    }
+
+    [Fact]
+    public async Task GetLeaderboard_IncludesLevelDerivedFromExperience()
+    {
+        var veteran = await RegisterAndLoginAsync("LeaderVeteran");
+        var hallId = await CreateHallAsync(veteran.UserId, "Level Hall");
+
+        await CreateReportedSessionAsync(veteran.UserId, hallId, gamesWon: 5, gamesLost: 5, ballsPotted: 25);
+        await SetExperienceAsync(veteran.UserId, 460); // exactly the start of level 5
+
+        var response = await TestApi.GetAsync(veteran, "/api/players/leaderboard");
+        await TestApi.EnsureStatusAsync(response, HttpStatusCode.OK);
+        var board = await TestApi.ReadAsAsync<List<LeaderboardEntryResponseDto>>(response);
+
+        var entry = board.Single(current => current.UserId == veteran.UserId);
+        Assert.Equal(5, entry.Level);
+        Assert.Equal("Drifter", entry.LevelTitle);
     }
 
     [Fact]
@@ -215,6 +237,28 @@ public sealed class PlayersTests : IntegrationTestBase
             }
 
             profile.Points = points;
+            await dbContext.SaveChangesAsync();
+        });
+    }
+
+    private async Task SetExperienceAsync(Guid userId, long experience)
+    {
+        await Factory.ExecuteDbContextAsync(async dbContext =>
+        {
+            var profile = await dbContext.PlayerProfiles.SingleOrDefaultAsync(current => current.UserId == userId);
+
+            if (profile is null)
+            {
+                profile = new PlayerProfile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId
+                };
+
+                dbContext.PlayerProfiles.Add(profile);
+            }
+
+            profile.Experience = experience;
             await dbContext.SaveChangesAsync();
         });
     }

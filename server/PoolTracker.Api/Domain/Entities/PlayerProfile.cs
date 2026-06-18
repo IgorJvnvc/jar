@@ -30,6 +30,13 @@ public sealed class PlayerProfile
 
     public int DuelsLost { get; set; }
 
+    /// <summary>
+    /// Cumulative lifetime experience. Non-spendable and separate from <see cref="Points"/>.
+    /// Level, level title, and progress are derived from this via <c>LevelingMath</c>; nothing else
+    /// is persisted, so there is no level state to keep in sync.
+    /// </summary>
+    public long Experience { get; set; }
+
     public DateTimeOffset UpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
     public ApplicationUser User { get; set; } = null!;

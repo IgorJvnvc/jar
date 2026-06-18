@@ -36,6 +36,11 @@ export type ProfileResponse = {
   duelsLost: number
   gamesWon: number
   gamesLost: number
+  level: number
+  levelTitle: string
+  experience: number
+  experienceIntoLevel: number
+  experienceForNextLevel: number
   updatedAtUtc: string
 }
 
@@ -151,6 +156,8 @@ export type LeaderboardEntryResponse = {
   totalBallsPotted: number
   totalSessions: number
   title: string | null
+  level: number
+  levelTitle: string
 }
 
 export type DuelLeaderboardEntryResponse = {
@@ -163,6 +170,8 @@ export type DuelLeaderboardEntryResponse = {
   winRate: number
   points: number
   title: string | null
+  level: number
+  levelTitle: string
 }
 
 export type SessionEndReason = 'Manual' | 'AutoIdle' | 'AutoDayClose'

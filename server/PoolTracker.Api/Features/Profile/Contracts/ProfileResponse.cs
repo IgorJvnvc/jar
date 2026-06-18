@@ -21,5 +21,10 @@ public sealed record ProfileResponse(
     int DuelsLost,
     int GamesWon,
     int GamesLost,
+    int Level,
+    string LevelTitle,
+    long Experience,
+    int ExperienceIntoLevel,
+    int ExperienceForNextLevel,
     DateTimeOffset UpdatedAtUtc
 );

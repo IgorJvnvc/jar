@@ -22,6 +22,8 @@ type BoardEntry = {
   played: number
   points: number
   title: string | null
+  level: number
+  levelTitle: string
   subtitle: string
 }
 
@@ -61,6 +63,8 @@ function fromSessions(entries: LeaderboardEntryResponse[]): BoardEntry[] {
     played: entry.totalGamesPlayed,
     points: entry.points,
     title: entry.title,
+    level: entry.level,
+    levelTitle: entry.levelTitle,
     subtitle: `${entry.totalSessions} sessions logged`,
   }))
 }
@@ -76,6 +80,8 @@ function fromDuels(entries: DuelLeaderboardEntryResponse[]): BoardEntry[] {
     played: entry.duelsPlayed,
     points: entry.points,
     title: entry.title,
+    level: entry.level,
+    levelTitle: entry.levelTitle,
     subtitle: `${entry.duelsPlayed} duels played`,
   }))
 }
@@ -244,7 +250,9 @@ export function LeaderboardPage() {
                         {entry.displayName}
                         {isCurrentUser ? <span className="leaderboard-row__you">You</span> : null}
                       </strong>
-                      <span>{entry.title ?? entry.subtitle}</span>
+                      <span>
+                        Lvl {entry.level} &middot; {entry.title ?? entry.levelTitle}
+                      </span>
                     </div>
 
                     <div className="leaderboard-row__stats">
